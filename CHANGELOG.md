@@ -11,6 +11,29 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.17.0] - 2026-09-13
+### Added
+- Shipping, on both web and mobile:
+  - USPS rate ESTIMATE (weight-band based - real USPS API integration
+    needs a registered API key, not yet configured)
+  - Saved shipping addresses (ship-to default for buyers, ship-from
+    location for sellers)
+  - Local pickup detection based on buyer/seller proximity (same city or
+    shared ZIP prefix), offered as a free alternative to shipping at
+    checkout
+  - Two-phase checkout: choose shipping method (with a live cost preview)
+    before the order is created, then pay - total correctly reflects item
+    + shipping
+  - Sellers can set a package weight per listing for more accurate
+    estimates
+  - Platform commission remains calculated on item price only, never
+    shipping cost
+  - `POST /orders/:id/complete` - buyer confirms receipt, the trust signal
+    that unlocks rating eligibility (ratings themselves not yet built)
+- Live-tested end-to-end: shipping cost bands, address pre-fill, same-city
+  pickup detection (both eligible and ineligible cases), commission
+  correctly excluding shipping
+
 ## [v0.16.0] - 2026-09-13
 ### Added
 - Chat/messaging between buyers and sellers, on both web and mobile: a
