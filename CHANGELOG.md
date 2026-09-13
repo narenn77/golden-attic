@@ -11,6 +11,13 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.13.1] - 2026-09-13
+### Fixed
+- Filter dropdown text was invisible on systems/browsers in dark mode -
+  the `<select>` elements forced a white background but never forced text
+  color or `color-scheme`, so the browser rendered native white-on-white
+  text to match OS dark mode preference
+
 ## [v0.13.0] - 2026-09-13
 ### Added
 - `year` and `country` fields on listings (optional - most relevant for
