@@ -20,6 +20,11 @@ export default function SignupScreen({ navigation }: any) {
     setSubmitting(true);
     try {
       await signup({ name: name.trim(), email: email.trim(), password });
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('Browse');
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
     } finally {

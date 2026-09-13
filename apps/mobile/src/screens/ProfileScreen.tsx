@@ -51,6 +51,9 @@ export default function ProfileScreen({ navigation }: any) {
             ? 'You can list items for sale.'
             : 'Set up payouts to start selling your items.'}
         </Text>
+        <TouchableOpacity style={styles.payoutButton} onPress={() => navigation.navigate('MyListings')}>
+          <Text style={styles.payoutButtonText}>My Listings</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.payoutButton} onPress={() => navigation.navigate('SellerOnboarding')}>
           <Text style={styles.payoutButtonText}>
             {user?.isSeller ? 'Manage payout settings' : 'Set up payouts'}

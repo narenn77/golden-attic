@@ -1,8 +1,11 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import type { Listing } from '../api/listings';
+import { useAuth } from '../context/AuthContext';
+import LikeButton from './LikeButton';
 
 export default function ListingCard({ listing, onPress }: { listing: Listing; onPress: () => void }) {
+  const { user } = useAuth();
   const priceLabel = `$${Number(listing.price).toFixed(2)}`;
   const detailLabel = [listing.year, listing.country].filter(Boolean).join(', ');
 
@@ -21,7 +24,16 @@ export default function ListingCard({ listing, onPress }: { listing: Listing; on
           {listing.category}
           {detailLabel ? ` · ${detailLabel}` : ''}
         </Text>
-        <Text style={styles.price}>{priceLabel}</Text>
+        <View style={styles.bottomRow}>
+          <Text style={styles.price}>{priceLabel}</Text>
+          <LikeButton
+            listingId={listing.id}
+            initialLiked={listing.likedByMe}
+            initialCount={listing.likeCount}
+            isOwner={user?.id === listing.sellerId}
+            size="sm"
+          />
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -35,5 +47,6 @@ const styles = StyleSheet.create({
   info: { padding: 10 },
   title: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
   category: { fontSize: 12, color: '#888', marginBottom: 4 },
+  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   price: { fontSize: 15, fontWeight: '700', color: '#B8860B' },
 });

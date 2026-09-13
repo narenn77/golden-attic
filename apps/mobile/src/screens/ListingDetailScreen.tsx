@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Alert } from 'react-native';
-import { fetchListing, deleteListing } from '../api/listings';
+import { fetchListing, deleteListing, pauseListing, resumeListing, daysUntilFreeHostingEnds } from '../api/listings';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import LikeButton from '../components/LikeButton';
 
 export default function ListingDetailScreen({ route, navigation }: any) {
   const { id } = route.params;
@@ -13,6 +14,7 @@ export default function ListingDetailScreen({ route, navigation }: any) {
   const [submittingBid, setSubmittingBid] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [deleting, setDeleting] = useState(false);
+  const [pausingOrResuming, setPausingOrResuming] = useState(false);
 
   useEffect(() => {
     fetchListing(id)
@@ -57,6 +59,30 @@ export default function ListingDetailScreen({ route, navigation }: any) {
     }
   }
 
+  async function handlePause() {
+    setPausingOrResuming(true);
+    try {
+      await pauseListing(id);
+      setListing((prev: any) => ({ ...prev, status: 'PAUSED' }));
+    } catch (err: any) {
+      Alert.alert('Could not pause listing', err?.message || 'Something went wrong.');
+    } finally {
+      setPausingOrResuming(false);
+    }
+  }
+
+  async function handleResume() {
+    setPausingOrResuming(true);
+    try {
+      await resumeListing(id);
+      setListing((prev: any) => ({ ...prev, status: 'ACTIVE' }));
+    } catch (err: any) {
+      Alert.alert('Could not resume listing', err?.message || 'Something went wrong.');
+    } finally {
+      setPausingOrResuming(false);
+    }
+  }
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -74,6 +100,7 @@ export default function ListingDetailScreen({ route, navigation }: any) {
   }
 
   const isOwner = user?.id === listing.sellerId;
+  const daysLeft = daysUntilFreeHostingEnds(listing);
 
   return (
     <ScrollView style={styles.container}>
@@ -99,7 +126,15 @@ export default function ListingDetailScreen({ route, navigation }: any) {
       )}
 
       <View style={styles.body}>
-        <Text style={styles.title}>{listing.title}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>{listing.title}</Text>
+          <LikeButton
+            listingId={listing.id}
+            initialLiked={listing.likedByMe}
+            initialCount={listing.likeCount}
+            isOwner={isOwner}
+          />
+        </View>
         <Text style={styles.category}>
           {listing.category}
           {(listing.year || listing.country) ? ` · ${[listing.year, listing.country].filter(Boolean).join(', ')}` : ''}
@@ -109,7 +144,16 @@ export default function ListingDetailScreen({ route, navigation }: any) {
 
         {listing.seller && <Text style={styles.seller}>Sold by {listing.seller.name}</Text>}
 
-        {!isOwner && listing.status === 'ACTIVE' && (
+        {!isOwner && !user && listing.status === 'ACTIVE' && (
+          <View style={styles.loginPrompt}>
+            <Text style={styles.loginPromptText}>Log in to buy or place a bid on this item.</Text>
+            <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('Login')}>
+              <Text style={styles.loginButtonText}>Log In</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!isOwner && user && listing.status === 'ACTIVE' && (
           <TouchableOpacity
             style={styles.buyButton}
             onPress={() => navigation.navigate('Checkout', { listingId: listing.id, title: listing.title, price: listing.price })}
@@ -118,7 +162,7 @@ export default function ListingDetailScreen({ route, navigation }: any) {
           </TouchableOpacity>
         )}
 
-        {!isOwner && listing.allowBidding && listing.status === 'ACTIVE' && (
+        {!isOwner && user && listing.allowBidding && listing.status === 'ACTIVE' && (
           <View style={styles.bidSection}>
             <Text style={styles.bidLabel}>Place a bid</Text>
             <View style={styles.bidRow}>
@@ -140,7 +184,25 @@ export default function ListingDetailScreen({ route, navigation }: any) {
           <View>
             <View style={styles.ownerBanner}>
               <Text style={styles.ownerBannerText}>This is your listing</Text>
+              {listing.status === 'ACTIVE' && daysLeft != null && (
+                <Text style={styles.ownerBannerSubtext}>
+                  {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} left of free hosting` : 'Hosting fee now applies (1%/month)'}
+                </Text>
+              )}
+              {listing.status === 'PAUSED' && <Text style={styles.ownerBannerSubtext}>Paused - hidden from buyers</Text>}
             </View>
+
+            {listing.status === 'ACTIVE' && (
+              <TouchableOpacity style={styles.pauseButton} onPress={handlePause} disabled={pausingOrResuming}>
+                {pausingOrResuming ? <ActivityIndicator color="#8B6914" /> : <Text style={styles.pauseButtonText}>Pause listing</Text>}
+              </TouchableOpacity>
+            )}
+            {listing.status === 'PAUSED' && (
+              <TouchableOpacity style={styles.resumeButton} onPress={handleResume} disabled={pausingOrResuming}>
+                {pausingOrResuming ? <ActivityIndicator color="#2E7D32" /> : <Text style={styles.resumeButtonText}>Resume listing</Text>}
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity style={styles.deleteButton} onPress={confirmDelete} disabled={deleting}>
               {deleting ? (
                 <ActivityIndicator color="#D32F2F" />
@@ -165,11 +227,16 @@ const styles = StyleSheet.create({
   thumb: { width: 60, height: 60, borderRadius: 8, marginRight: 8, borderWidth: 2, borderColor: 'transparent' },
   thumbActive: { borderColor: '#B8860B' },
   body: { padding: 20 },
-  title: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  title: { fontSize: 22, fontWeight: '700', marginBottom: 4, flex: 1, marginRight: 8 },
   category: { fontSize: 14, color: '#888', marginBottom: 8 },
   price: { fontSize: 24, fontWeight: '700', color: '#B8860B', marginBottom: 16 },
   description: { fontSize: 15, lineHeight: 22, color: '#333', marginBottom: 16 },
   seller: { fontSize: 13, color: '#666', marginBottom: 16 },
+  loginPrompt: { backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: '#eee', borderRadius: 8, padding: 16, alignItems: 'center' },
+  loginPromptText: { color: '#444', marginBottom: 12, textAlign: 'center' },
+  loginButton: { backgroundColor: '#B8860B', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24 },
+  loginButtonText: { color: '#fff', fontWeight: '600' },
   buyButton: { backgroundColor: '#2E7D32', borderRadius: 8, padding: 16, alignItems: 'center', marginTop: 12 },
   buyButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   bidSection: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 16 },
@@ -180,6 +247,11 @@ const styles = StyleSheet.create({
   bidButtonText: { color: '#fff', fontWeight: '600' },
   ownerBanner: { backgroundColor: '#FFF8E1', padding: 12, borderRadius: 8, marginTop: 12 },
   ownerBannerText: { color: '#8B6914', textAlign: 'center', fontWeight: '600' },
+  ownerBannerSubtext: { color: '#8B6914', textAlign: 'center', fontSize: 13, marginTop: 4 },
+  pauseButton: { borderWidth: 1, borderColor: '#B8860B', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 12 },
+  pauseButtonText: { color: '#8B6914', fontWeight: '600' },
+  resumeButton: { borderWidth: 1, borderColor: '#2E7D32', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 12 },
+  resumeButtonText: { color: '#2E7D32', fontWeight: '600' },
   deleteButton: { borderWidth: 1, borderColor: '#D32F2F', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 12 },
   deleteButtonText: { color: '#D32F2F', fontWeight: '600' },
 });

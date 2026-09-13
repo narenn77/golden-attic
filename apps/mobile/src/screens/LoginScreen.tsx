@@ -15,6 +15,11 @@ export default function LoginScreen({ navigation }: any) {
     setSubmitting(true);
     try {
       await login(email.trim(), password);
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('Browse');
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
     } finally {
