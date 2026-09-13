@@ -11,6 +11,17 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.19.3] - 2026-09-13
+### Added
+- Every filter section now always has an "All ___" reset option
+  (Category/Country previously had none - only a single "Clear all" for
+  everything at once)
+### Changed
+- The filter panel is now collapsible via a toggle button with an
+  active-filter-count badge, instead of always stacking full-width above
+  the listings grid on narrower screens - auto-expands on wider screens
+  where it fits comfortably to the side
+
 ## [v0.19.2] - 2026-09-13
 ### Fixed
 - Checkboxes and radio buttons (filter sidebar, checkout shipping choice)
