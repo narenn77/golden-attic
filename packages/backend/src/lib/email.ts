@@ -41,3 +41,7 @@ export function verificationEmailBody(verifyUrl: string) {
 export function passwordResetEmailBody(resetUrl: string) {
   return `We received a request to reset your Golden Attic password. Visit:\n${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, you can ignore this email.`;
 }
+
+export function listingExpiryWarningBody(listingTitle: string, daysLeft: number, myListingsUrl: string) {
+  return `Your listing "${listingTitle}" has ${daysLeft} day${daysLeft === 1 ? '' : 's'} left of free hosting on Golden Attic.\n\nAfter that, a 1%/month hosting fee applies to keep it listed. If you'd rather not be charged, you can pause the listing any time (it stays in your account, just hidden from buyers) or remove it entirely.\n\nManage your listings: ${myListingsUrl}`;
+}

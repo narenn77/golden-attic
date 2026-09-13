@@ -31,3 +31,6 @@ services:
         sync: false
       - key: APP_URL
         sync: false # your web app's URL, once deployed (used in email links)
+      - key: MAINTENANCE_SECRET
+        generateValue: true # shared secret for POST /admin/maintenance - also set this same value as a
+                             # MAINTENANCE_SECRET GitHub Actions repo secret so the scheduled workflow can call it

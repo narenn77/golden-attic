@@ -11,6 +11,7 @@ import { paymentsRouter, handleStripeWebhook } from './routes/payments.js';
 import { aiListingRouter } from './routes/aiListing.js';
 import { conversationsRouter } from './routes/conversations.js';
 import { ratingsRouter } from './routes/ratings.js';
+import { maintenanceRouter } from './routes/maintenance.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 // Builds the Express app without starting a listener - this is what both
@@ -49,6 +50,7 @@ export function createApp() {
   app.use('/payments', paymentsRouter);
   app.use('/conversations', conversationsRouter);
   app.use('/', ratingsRouter);
+  app.use('/', maintenanceRouter);
 
   app.use(errorHandler);
 
