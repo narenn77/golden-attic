@@ -37,6 +37,8 @@ interface AiDraftResult {
   category: string;
   suggestedPriceUsd: number;
   confidence: 'low' | 'medium' | 'high';
+  year: number | null;
+  country: string | null;
 }
 
 function extractJson(text: string): unknown {
@@ -45,6 +47,8 @@ function extractJson(text: string): unknown {
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
   return JSON.parse(cleaned);
 }
+
+const CURRENT_YEAR = new Date().getFullYear();
 
 function validateDraft(parsed: any): AiDraftResult {
   const title = typeof parsed.title === 'string' ? parsed.title.slice(0, 120) : 'Untitled item';
@@ -56,8 +60,14 @@ function validateDraft(parsed: any): AiDraftResult {
   const confidence: AiDraftResult['confidence'] = ['low', 'medium', 'high'].includes(parsed.confidence)
     ? parsed.confidence
     : 'low';
+  const year = typeof parsed.year === 'number' && parsed.year >= 1000 && parsed.year <= CURRENT_YEAR
+    ? Math.round(parsed.year)
+    : null;
+  const country = typeof parsed.country === 'string' && parsed.country.trim()
+    ? parsed.country.trim().slice(0, 100)
+    : null;
 
-  return { title, description, category, suggestedPriceUsd, confidence };
+  return { title, description, category, suggestedPriceUsd, confidence, year, country };
 }
 
 // POST /listings/ai-draft
@@ -95,10 +105,12 @@ Look at the photo(s) and produce a draft listing. Respond with ONLY a raw JSON o
   "description": string (2-4 sentences: what it is, condition, any notable details visible in the photo),
   "category": string (must be exactly one of: ${LISTING_CATEGORIES.join(', ')}),
   "suggestedPriceUsd": number (a reasonable estimated resale price in US dollars based on what's visible - a rough estimate, not an appraisal),
-  "confidence": "low" | "medium" | "high" (your confidence in this identification and price estimate)
+  "confidence": "low" | "medium" | "high" (your confidence in this identification and price estimate),
+  "year": number or null (the year of issue/manufacture, if visible or confidently inferable - this is especially important and often visible for stamps, coins, and currency; use null rather than guessing if you can't support it from the image),
+  "country": string or null (the country of origin/issue, if visible or confidently inferable - also especially relevant for stamps, coins, and currency; use null rather than guessing)
 }
 
-If you cannot clearly identify the item, still provide your best-effort draft with "confidence": "low" and say so plainly in the description rather than guessing specifics you can't support from the image.`;
+If you cannot clearly identify the item, still provide your best-effort draft with "confidence": "low" and say so plainly in the description rather than guessing specifics you can't support from the image. Leave "year" and "country" as null whenever they aren't visibly supported - do not fabricate them just to fill the fields.`;
 
   const userNote = note?.trim()
     ? `The seller added this note about the item: "${note.trim()}"`

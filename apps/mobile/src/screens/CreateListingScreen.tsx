@@ -20,6 +20,8 @@ export default function CreateListingScreen({ navigation }: any) {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState('');
+  const [year, setYear] = useState('');
+  const [country, setCountry] = useState('');
 
   async function pickImage() {
     if (images.length >= MAX_IMAGES) {
@@ -62,6 +64,8 @@ export default function CreateListingScreen({ navigation }: any) {
       setDescription(draft.description);
       setCategory(draft.category);
       setPrice(String(draft.suggestedPriceUsd));
+      setYear(draft.year != null ? String(draft.year) : '');
+      setCountry(draft.country || '');
     } catch (err: any) {
       Alert.alert('Could not generate a draft', err?.message || 'Please try again, or fill in the details yourself below.');
     } finally {
@@ -89,6 +93,8 @@ export default function CreateListingScreen({ navigation }: any) {
         price: priceNumber,
         images,
         aiGenerated: draft !== null,
+        year: year.trim() ? parseInt(year.trim(), 10) : null,
+        country: country.trim() || null,
       });
       await publishListing(listing.id);
       Alert.alert('Listing published!', 'Your item is now live.', [
@@ -155,6 +161,21 @@ export default function CreateListingScreen({ navigation }: any) {
         multiline
       />
       <TextInput style={styles.input} placeholder="Category" value={category} onChangeText={setCategory} />
+      <View style={styles.row}>
+        <TextInput
+          style={[styles.input, styles.rowInput]}
+          placeholder="Year (optional)"
+          keyboardType="number-pad"
+          value={year}
+          onChangeText={setYear}
+        />
+        <TextInput
+          style={[styles.input, styles.rowInput]}
+          placeholder="Country (optional)"
+          value={country}
+          onChangeText={setCountry}
+        />
+      </View>
       <TextInput
         style={styles.input}
         placeholder="Price ($)"
@@ -188,6 +209,8 @@ const styles = StyleSheet.create({
   lowConfidenceNote: { color: '#8B6914', fontSize: 13, marginBottom: 12, fontStyle: 'italic' },
   sectionLabel: { fontSize: 15, fontWeight: '600', marginTop: 12, marginBottom: 8, color: '#444' },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 14, marginBottom: 12, fontSize: 16 },
+  row: { flexDirection: 'row', gap: 10 },
+  rowInput: { flex: 1 },
   textArea: { minHeight: 90, textAlignVertical: 'top' },
   publishButton: { backgroundColor: '#B8860B', borderRadius: 8, padding: 16, alignItems: 'center', marginTop: 8, marginBottom: 40 },
   publishButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },

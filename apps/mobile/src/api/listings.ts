@@ -11,6 +11,8 @@ export interface Listing {
   status: 'DRAFT' | 'ACTIVE' | 'SOLD' | 'EXPIRED' | 'REMOVED';
   allowBidding: boolean;
   aiGenerated: boolean;
+  year: number | null;
+  country: string | null;
   createdAt: string;
   seller?: { id: string; name: string };
 }
@@ -32,6 +34,8 @@ export function createListing(input: {
   images: string[];
   aiGenerated?: boolean;
   allowBidding?: boolean;
+  year?: number | null;
+  country?: string | null;
 }) {
   return apiRequest<Listing>('/listings', { method: 'POST', body: input });
 }
@@ -46,6 +50,8 @@ export interface AiListingDraft {
   category: string;
   suggestedPriceUsd: number;
   confidence: 'low' | 'medium' | 'high';
+  year: number | null;
+  country: string | null;
 }
 
 export function requestAiDraft(input: { images: string[]; note?: string }) {

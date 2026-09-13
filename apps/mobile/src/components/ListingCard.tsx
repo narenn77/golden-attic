@@ -4,6 +4,7 @@ import type { Listing } from '../api/listings';
 
 export default function ListingCard({ listing, onPress }: { listing: Listing; onPress: () => void }) {
   const priceLabel = `$${Number(listing.price).toFixed(2)}`;
+  const detailLabel = [listing.year, listing.country].filter(Boolean).join(', ');
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
@@ -16,7 +17,10 @@ export default function ListingCard({ listing, onPress }: { listing: Listing; on
       )}
       <View style={styles.info}>
         <Text style={styles.title} numberOfLines={1}>{listing.title}</Text>
-        <Text style={styles.category}>{listing.category}</Text>
+        <Text style={styles.category}>
+          {listing.category}
+          {detailLabel ? ` · ${detailLabel}` : ''}
+        </Text>
         <Text style={styles.price}>{priceLabel}</Text>
       </View>
     </TouchableOpacity>

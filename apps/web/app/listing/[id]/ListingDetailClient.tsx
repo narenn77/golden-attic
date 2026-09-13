@@ -48,7 +48,12 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
       </div>
 
       <h1 className="text-2xl font-bold mb-1">{listing.title}</h1>
-      <p className="text-neutral-500 mb-3">{listing.category}</p>
+      <p className="text-neutral-500 mb-3">
+        {listing.category}
+        {(listing.year || listing.country) && (
+          <span> · {[listing.year, listing.country].filter(Boolean).join(', ')}</span>
+        )}
+      </p>
       <p className="text-3xl font-bold text-amber-700 mb-4">${Number(listing.price).toFixed(2)}</p>
       <p className="text-neutral-700 leading-relaxed mb-6">{listing.description}</p>
 

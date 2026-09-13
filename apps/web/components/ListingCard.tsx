@@ -17,7 +17,15 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       </div>
       <div className="p-3">
         <h3 className="font-medium text-sm truncate">{listing.title}</h3>
-        <p className="text-xs text-neutral-500 mb-1">{listing.category}</p>
+        <p className="text-xs text-neutral-500 mb-1">
+          {listing.category}
+          {(listing.year || listing.country) && (
+            <span>
+              {' · '}
+              {[listing.year, listing.country].filter(Boolean).join(', ')}
+            </span>
+          )}
+        </p>
         <p className="text-amber-700 font-bold">${Number(listing.price).toFixed(2)}</p>
       </div>
     </Link>

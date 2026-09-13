@@ -74,6 +74,11 @@ model Listing {
   hostingPaidUntil  DateTime?     // hosting fee paid through this date
   soldAt            DateTime?
 
+  // Provenance fields - especially valuable for stamps, coins, currency.
+  // Not applicable to every category, so both are optional.
+  year              Int?          // year of issue/manufacture
+  country           String?       // country of origin
+
   allowBidding      Boolean       @default(true)
 
   createdAt         DateTime      @default(now())
@@ -86,6 +91,8 @@ model Listing {
   @@index([sellerId])
   @@index([status])
   @@index([category])
+  @@index([country])
+  @@index([year])
 }
 
 // ---------- Bidding ----------

@@ -67,7 +67,10 @@ export default function ListingDetailScreen({ route, navigation }: any) {
 
       <View style={styles.body}>
         <Text style={styles.title}>{listing.title}</Text>
-        <Text style={styles.category}>{listing.category}</Text>
+        <Text style={styles.category}>
+          {listing.category}
+          {(listing.year || listing.country) ? ` · ${[listing.year, listing.country].filter(Boolean).join(', ')}` : ''}
+        </Text>
         <Text style={styles.price}>${Number(listing.price).toFixed(2)}</Text>
         <Text style={styles.description}>{listing.description}</Text>
 

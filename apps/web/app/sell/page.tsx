@@ -31,6 +31,8 @@ export default function SellPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState('');
+  const [year, setYear] = useState('');
+  const [country, setCountry] = useState('');
 
   async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
@@ -59,6 +61,8 @@ export default function SellPage() {
       setDescription(draft.description);
       setCategory(draft.category);
       setPrice(String(draft.suggestedPriceUsd));
+      setYear(draft.year != null ? String(draft.year) : '');
+      setCountry(draft.country || '');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not generate a draft. You can still fill in the details below yourself.');
     } finally {
@@ -84,6 +88,8 @@ export default function SellPage() {
         price: priceNumber,
         images,
         aiGenerated: draft !== null,
+        year: year.trim() ? parseInt(year.trim(), 10) : null,
+        country: country.trim() || null,
       });
       await publishListing(listing.id);
       router.push(`/listing/${listing.id}`);
@@ -97,7 +103,9 @@ export default function SellPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-1">Sell an item</h1>
-      <p className="text-neutral-500 mb-6">Add a few photos and let AI draft the listing for you.</p>
+      <p className="text-neutral-500 mb-6">
+        Add a few photos and let AI draft the listing for you — including year and country of origin for stamps, coins, and currency.
+      </p>
 
       <div className="flex flex-wrap gap-3 mb-4">
         {images.map((src, i) => (
@@ -165,6 +173,21 @@ export default function SellPage() {
           onChange={(e) => setCategory(e.target.value)}
           className="w-full border border-neutral-300 rounded-md px-4 py-3"
         />
+        <div className="flex gap-3">
+          <input
+            type="number"
+            placeholder="Year (optional)"
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            className="flex-1 border border-neutral-300 rounded-md px-4 py-3"
+          />
+          <input
+            placeholder="Country of origin (optional)"
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            className="flex-1 border border-neutral-300 rounded-md px-4 py-3"
+          />
+        </div>
         <input
           type="number"
           step="0.01"
