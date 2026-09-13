@@ -10,6 +10,7 @@ import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import BrowseScreen from '../screens/BrowseScreen';
 import ListingDetailScreen from '../screens/ListingDetailScreen';
 import CreateListingScreen from '../screens/CreateListingScreen';
+import CheckoutScreen from '../screens/CheckoutScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
@@ -45,6 +46,7 @@ function AppStack() {
         })}
       />
       <Stack.Screen name="ListingDetail" component={ListingDetailScreen} options={{ title: 'Item' }} />
+      <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ title: 'Checkout' }} />
       <Stack.Screen name="CreateListing" component={CreateListingScreen} options={{ title: 'Sell an Item' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
     </Stack.Navigator>

@@ -4,7 +4,7 @@ import { fetchListing } from '../api/listings';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
-export default function ListingDetailScreen({ route }: any) {
+export default function ListingDetailScreen({ route, navigation }: any) {
   const { id } = route.params;
   const { user } = useAuth();
   const [listing, setListing] = useState<any | null>(null);
@@ -73,6 +73,15 @@ export default function ListingDetailScreen({ route }: any) {
 
         {listing.seller && <Text style={styles.seller}>Sold by {listing.seller.name}</Text>}
 
+        {!isOwner && listing.status === 'ACTIVE' && (
+          <TouchableOpacity
+            style={styles.buyButton}
+            onPress={() => navigation.navigate('Checkout', { listingId: listing.id, title: listing.title, price: listing.price })}
+          >
+            <Text style={styles.buyButtonText}>Buy Now — ${Number(listing.price).toFixed(2)}</Text>
+          </TouchableOpacity>
+        )}
+
         {!isOwner && listing.allowBidding && listing.status === 'ACTIVE' && (
           <View style={styles.bidSection}>
             <Text style={styles.bidLabel}>Place a bid</Text>
@@ -112,6 +121,8 @@ const styles = StyleSheet.create({
   price: { fontSize: 24, fontWeight: '700', color: '#B8860B', marginBottom: 16 },
   description: { fontSize: 15, lineHeight: 22, color: '#333', marginBottom: 16 },
   seller: { fontSize: 13, color: '#666', marginBottom: 16 },
+  buyButton: { backgroundColor: '#2E7D32', borderRadius: 8, padding: 16, alignItems: 'center', marginTop: 12 },
+  buyButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   bidSection: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 16 },
   bidLabel: { fontSize: 15, fontWeight: '600', marginBottom: 8 },
   bidRow: { flexDirection: 'row', gap: 8 },
