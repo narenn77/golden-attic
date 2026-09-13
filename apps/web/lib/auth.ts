@@ -37,6 +37,10 @@ export function verifyEmail(token: string) {
   return apiRequest<{ message: string }>('/auth/verify-email', { method: 'POST', body: { token }, auth: false });
 }
 
+export function resendVerification() {
+  return apiRequest<{ message: string }>('/auth/resend-verification', { method: 'POST' });
+}
+
 export function becomeSeller(userId: string) {
   return apiRequest<AuthUser>(`/users/${userId}/become-seller`, { method: 'PATCH' });
 }

@@ -1,9 +1,25 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import * as authApi from '../api/auth';
+import { ApiError } from '../api/client';
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [resendMessage, setResendMessage] = useState('');
+
+  async function handleResend() {
+    setResendState('sending');
+    try {
+      const result = await authApi.resendVerification();
+      setResendMessage(result.message);
+      setResendState('sent');
+    } catch (err) {
+      setResendMessage(err instanceof ApiError ? err.message : 'Could not resend verification email.');
+      setResendState('error');
+    }
+  }
 
   return (
     <View style={styles.container}>
@@ -13,6 +29,18 @@ export default function ProfileScreen({ navigation }: any) {
       {!user?.emailVerified && (
         <View style={styles.warningBanner}>
           <Text style={styles.warningText}>Please verify your email address.</Text>
+          {resendState === 'sent' ? (
+            <Text style={styles.resendSentText}>{resendMessage}</Text>
+          ) : (
+            <TouchableOpacity onPress={handleResend} disabled={resendState === 'sending'}>
+              {resendState === 'sending' ? (
+                <ActivityIndicator color="#8B4513" style={{ marginTop: 8 }} />
+              ) : (
+                <Text style={styles.resendLink}>Resend verification email</Text>
+              )}
+            </TouchableOpacity>
+          )}
+          {resendState === 'error' && <Text style={styles.resendErrorText}>{resendMessage}</Text>}
         </View>
       )}
 
@@ -42,7 +70,10 @@ const styles = StyleSheet.create({
   name: { fontSize: 22, fontWeight: '700' },
   email: { fontSize: 14, color: '#666', marginBottom: 20 },
   warningBanner: { backgroundColor: '#FFF3E0', padding: 12, borderRadius: 8, marginBottom: 20 },
-  warningText: { color: '#8B4513', textAlign: 'center' },
+  warningText: { color: '#8B4513', textAlign: 'center', marginBottom: 8 },
+  resendLink: { color: '#8B4513', textAlign: 'center', fontWeight: '600', textDecorationLine: 'underline' },
+  resendSentText: { color: '#8B4513', textAlign: 'center', fontWeight: '600' },
+  resendErrorText: { color: '#D32F2F', textAlign: 'center', marginTop: 4 },
   section: { marginBottom: 24 },
   sectionLabel: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
   sectionBody: { fontSize: 14, color: '#666' },

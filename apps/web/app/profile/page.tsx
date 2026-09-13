@@ -1,10 +1,27 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '../../lib/AuthContext';
+import * as authApi from '../../lib/auth';
+import { ApiError } from '../../lib/client';
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [resendMessage, setResendMessage] = useState('');
+
+  async function handleResend() {
+    setResendState('sending');
+    try {
+      const result = await authApi.resendVerification();
+      setResendMessage(result.message);
+      setResendState('sent');
+    } catch (err) {
+      setResendMessage(err instanceof ApiError ? err.message : 'Could not resend verification email.');
+      setResendState('error');
+    }
+  }
 
   if (!user) {
     return (
@@ -24,7 +41,19 @@ export default function ProfilePage() {
 
       {!user.emailVerified && (
         <div className="bg-orange-50 text-orange-800 rounded-md p-4 mb-6 text-sm">
-          Please verify your email address.
+          <p className="mb-2">Please verify your email address.</p>
+          {resendState === 'sent' ? (
+            <p className="text-orange-700 font-medium">{resendMessage}</p>
+          ) : (
+            <button
+              onClick={handleResend}
+              disabled={resendState === 'sending'}
+              className="underline font-semibold disabled:opacity-60"
+            >
+              {resendState === 'sending' ? 'Sending...' : 'Resend verification email'}
+            </button>
+          )}
+          {resendState === 'error' && <p className="text-red-700 mt-1">{resendMessage}</p>}
         </div>
       )}
 
