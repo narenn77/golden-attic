@@ -1,0 +1,8 @@
+{
+  "name": "golden-attic",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
+}

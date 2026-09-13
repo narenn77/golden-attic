@@ -8,6 +8,7 @@ import { ordersRouter } from './routes/orders.js';
 import { usersRouter } from './routes/users.js';
 import { authRouter } from './routes/auth.js';
 import { paymentsRouter, handleStripeWebhook } from './routes/payments.js';
+import { aiListingRouter } from './routes/aiListing.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -19,13 +20,14 @@ app.use(cors());
 // go through the JSON body parser.
 app.post('/payments/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // AI listing drafts send base64 images
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 app.use('/auth', authRouter);
 app.use('/users', usersRouter);
 app.use('/listings', listingsRouter);
+app.use('/listings', aiListingRouter);
 app.use('/bids', bidsRouter);
 app.use('/orders', ordersRouter);
 app.use('/payments', paymentsRouter);
