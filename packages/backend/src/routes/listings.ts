@@ -4,6 +4,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { optionalAuth } from '../middleware/optionalAuth.js';
 import { LISTING_CATEGORIES } from '@golden-attic/shared';
+import { calculateShippingRate, isLikelyLocalPickup } from '../lib/shipping.js';
 
 export const listingsRouter = Router();
 
@@ -163,6 +164,39 @@ listingsRouter.get('/:id', optionalAuth, asyncHandler(async (req, res) => {
   res.json({ ...shapeListingWithLikes(listing), bids: visibleBids });
 }));
 
+// GET /listings/:id/shipping-quote - estimated shipping cost to the
+// current user's saved address (or a supplied postalCode/city/state
+// override), plus whether local pickup looks plausible based on proximity
+// to the seller. This is a preview only - the actual order stores whatever
+// was true at checkout time.
+listingsRouter.get('/:id/shipping-quote', requireAuth, asyncHandler(async (req, res) => {
+  const listing = await prisma.listing.findUnique({ where: { id: String(req.params.id) } });
+  if (!listing) return res.status(404).json({ error: { message: 'Listing not found' } });
+
+  const seller = await prisma.user.findUnique({ where: { id: listing.sellerId } });
+  const buyer = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+
+  const destination = {
+    city: (req.query.city as string) || buyer?.city || null,
+    state: (req.query.state as string) || buyer?.state || null,
+    postalCode: (req.query.postalCode as string) || buyer?.postalCode || null,
+  };
+
+  const rate = calculateShippingRate(listing.weightOz);
+  const localPickupEligible = isLikelyLocalPickup(destination, {
+    city: seller?.city, state: seller?.state, postalCode: seller?.postalCode,
+  });
+
+  res.json({
+    shippingCost: rate.cost,
+    service: rate.service,
+    estimated: rate.estimated,
+    localPickupEligible,
+    sellerCity: seller?.city ?? null,
+    sellerState: seller?.state ?? null,
+  });
+}));
+
 const CURRENT_YEAR = new Date().getFullYear();
 
 function validateYear(year: unknown): number | null | undefined {
@@ -178,13 +212,14 @@ function validateYear(year: unknown): number | null | undefined {
 // POST /listings - create a new listing (draft). Seller is taken from the
 // authenticated session, never trusted from the request body.
 listingsRouter.post('/', requireAuth, asyncHandler(async (req, res) => {
-  const { title, description, category, price, images, aiGenerated, allowBidding, year, country } = req.body;
+  const { title, description, category, price, images, aiGenerated, allowBidding, year, country, weightOz } = req.body;
 
   if (!title || !description || !category || price == null) {
     return res.status(400).json({ error: { message: 'Missing required listing fields' } });
   }
 
   const validatedYear = validateYear(year);
+  const validatedWeight = typeof weightOz === 'number' && weightOz > 0 ? Math.round(weightOz) : undefined;
 
   const listing = await prisma.listing.create({
     data: {
@@ -199,6 +234,7 @@ listingsRouter.post('/', requireAuth, asyncHandler(async (req, res) => {
       status: 'DRAFT',
       ...(validatedYear !== undefined ? { year: validatedYear } : {}),
       ...(country ? { country: String(country).trim().slice(0, 100) } : {}),
+      ...(validatedWeight !== undefined ? { weightOz: validatedWeight } : {}),
     },
   });
 
@@ -280,13 +316,14 @@ listingsRouter.patch('/:id', requireAuth, asyncHandler(async (req, res) => {
     return res.status(403).json({ error: { message: 'Not your listing' } });
   }
 
-  const { title, description, category, price, images, allowBidding, year, country } = req.body;
+  const { title, description, category, price, images, allowBidding, year, country, weightOz } = req.body;
   // NOTE: status is intentionally not editable here - it only transitions via
   // /publish (DRAFT -> ACTIVE, which also sets up the free-hosting-month
   // fields) and DELETE (-> REMOVED). Allowing it here would let a seller skip
   // that setup or reactivate a listing that already sold.
 
   const validatedYear = validateYear(year);
+  const validatedWeight = typeof weightOz === 'number' && weightOz > 0 ? Math.round(weightOz) : weightOz === null ? null : undefined;
 
   const listing = await prisma.listing.update({
     where: { id: String(req.params.id) },
@@ -299,6 +336,7 @@ listingsRouter.patch('/:id', requireAuth, asyncHandler(async (req, res) => {
       ...(allowBidding !== undefined ? { allowBidding } : {}),
       ...(validatedYear !== undefined ? { year: validatedYear } : {}),
       ...(country !== undefined ? { country: country ? String(country).trim().slice(0, 100) : null } : {}),
+      ...(validatedWeight !== undefined ? { weightOz: validatedWeight } : {}),
     },
   });
 

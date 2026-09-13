@@ -37,3 +37,29 @@ usersRouter.patch('/:id/become-seller', requireAuth, asyncHandler(async (req, re
 
   res.json(user);
 }));
+
+// PATCH /users/me/address - update the current user's saved address (used
+// as a seller's ship-from location and pre-filled as a buyer's default
+// ship-to address at checkout). Self only, by construction - there's no
+// :id in this path.
+usersRouter.patch('/me/address', requireAuth, asyncHandler(async (req, res) => {
+  const { addressLine1, addressLine2, city, state, postalCode, country } = req.body;
+
+  const user = await prisma.user.update({
+    where: { id: req.user!.userId },
+    data: {
+      ...(addressLine1 !== undefined ? { addressLine1: addressLine1 ? String(addressLine1).slice(0, 200) : null } : {}),
+      ...(addressLine2 !== undefined ? { addressLine2: addressLine2 ? String(addressLine2).slice(0, 200) : null } : {}),
+      ...(city !== undefined ? { city: city ? String(city).slice(0, 100) : null } : {}),
+      ...(state !== undefined ? { state: state ? String(state).slice(0, 100) : null } : {}),
+      ...(postalCode !== undefined ? { postalCode: postalCode ? String(postalCode).slice(0, 20) : null } : {}),
+      ...(country !== undefined ? { country: country ? String(country).slice(0, 100) : 'US' } : {}),
+    },
+    select: {
+      id: true, email: true, name: true, phone: true, isSeller: true, emailVerified: true, createdAt: true,
+      addressLine1: true, addressLine2: true, city: true, state: true, postalCode: true, country: true,
+    },
+  });
+
+  res.json(user);
+}));

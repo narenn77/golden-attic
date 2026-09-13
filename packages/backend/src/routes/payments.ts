@@ -94,11 +94,11 @@ paymentsRouter.post('/checkout', requireAuth, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: { message: 'Seller has not completed payment onboarding yet' } });
   }
 
-  const amountInCents = Math.round(Number(order.amount) * 100);
-  const commissionInCents = Math.round(Number(order.commissionAmount) * 100);
+  const totalCents = Math.round((Number(order.amount) + Number(order.shippingCost ?? 0)) * 100);
+  const commissionInCents = Math.round(Number(order.commissionAmount) * 100); // commission is on item price only, never shipping
 
   const paymentIntent = await stripe.paymentIntents.create({
-    amount: amountInCents,
+    amount: totalCents,
     currency: 'usd',
     application_fee_amount: commissionInCents,
     transfer_data: {

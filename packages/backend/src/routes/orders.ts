@@ -2,19 +2,22 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { calculateShippingRate } from '../lib/shipping.js';
 
 export const ordersRouter = Router();
 
-const PLATFORM_COMMISSION_RATE = 0.05; // 5% of sale price - decided
+const PLATFORM_COMMISSION_RATE = 0.05; // 5% of sale price - decided (on item price only, not shipping)
 
 // POST /orders - open an order against a listing, either at the listing's
 // asking price (direct "buy now") or at a bid's negotiated price.
 //
 // SECURITY: the sale amount is ALWAYS derived server-side from the listing
 // (or an accepted bid belonging to that listing) - a client-supplied amount
-// is never trusted, since that would let a buyer name their own price.
+// is never trusted, since that would let a buyer name their own price. The
+// same applies to shippingCost - it's always calculated server-side from
+// the listing's weight, never accepted from the client.
 ordersRouter.post('/', requireAuth, asyncHandler(async (req, res) => {
-  const { listingId, bidId } = req.body;
+  const { listingId, bidId, localPickup, shippingAddressLine1, shippingAddressLine2, shippingCity, shippingState, shippingPostalCode, shippingCountry } = req.body;
   const buyerId = req.user!.userId;
 
   if (!listingId) {
@@ -71,6 +74,34 @@ ordersRouter.post('/', requireAuth, asyncHandler(async (req, res) => {
   const commissionAmount = Math.round(amount * PLATFORM_COMMISSION_RATE * 100) / 100;
   const sellerPayoutAmount = Math.round((amount - commissionAmount) * 100) / 100;
 
+  const isLocalPickup = localPickup === true;
+  let shippingCost = 0;
+  let shippingFields = {};
+
+  if (isLocalPickup) {
+    shippingFields = { localPickup: true, shippingCost: 0 };
+  } else {
+    const buyer = await prisma.user.findUnique({ where: { id: buyerId } });
+    const resolvedAddress = {
+      shippingAddressLine1: shippingAddressLine1 ?? buyer?.addressLine1 ?? null,
+      shippingAddressLine2: shippingAddressLine2 ?? buyer?.addressLine2 ?? null,
+      shippingCity: shippingCity ?? buyer?.city ?? null,
+      shippingState: shippingState ?? buyer?.state ?? null,
+      shippingPostalCode: shippingPostalCode ?? buyer?.postalCode ?? null,
+      shippingCountry: shippingCountry ?? buyer?.country ?? 'US',
+    };
+
+    if (!resolvedAddress.shippingAddressLine1 || !resolvedAddress.shippingCity || !resolvedAddress.shippingPostalCode) {
+      return res.status(400).json({
+        error: { message: 'A shipping address is required (or choose local pickup). Add one to your profile or include it in this request.' },
+      });
+    }
+
+    const rate = calculateShippingRate(listing.weightOz);
+    shippingCost = rate.cost;
+    shippingFields = { localPickup: false, shippingCost, ...resolvedAddress };
+  }
+
   const order = await prisma.order.create({
     data: {
       listingId,
@@ -80,6 +111,7 @@ ordersRouter.post('/', requireAuth, asyncHandler(async (req, res) => {
       commissionAmount,
       sellerPayoutAmount,
       status: 'PENDING_PAYMENT',
+      ...shippingFields,
     },
   });
 
@@ -92,6 +124,24 @@ ordersRouter.post('/', requireAuth, asyncHandler(async (req, res) => {
   // listing itself should keep showing as available in the meantime.
 
   res.status(201).json(order);
+}));
+
+// POST /orders/:id/complete - buyer confirms receipt of the item. Only
+// after this does either party become eligible to rate the other (see
+// routes/ratings.ts) - it's the trust signal that the transaction actually
+// happened and finished, not just that payment succeeded.
+ordersRouter.post('/:id/complete', requireAuth, asyncHandler(async (req, res) => {
+  const order = await prisma.order.findUnique({ where: { id: String(req.params.id) } });
+  if (!order) return res.status(404).json({ error: { message: 'Order not found' } });
+  if (order.buyerId !== req.user!.userId) {
+    return res.status(403).json({ error: { message: 'Only the buyer can confirm an order as complete' } });
+  }
+  if (order.status !== 'PAID') {
+    return res.status(400).json({ error: { message: `Cannot complete an order with status ${order.status}` } });
+  }
+
+  const updated = await prisma.order.update({ where: { id: order.id }, data: { status: 'COMPLETED' } });
+  res.json(updated);
 }));
 
 // GET /orders/:id - only the buyer or seller on the order may view it.
