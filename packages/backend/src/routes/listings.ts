@@ -16,21 +16,42 @@ const SORT_OPTIONS = {
   year_oldest: { year: 'asc' as const },
 };
 
+// Reshapes a listing fetched with `_count.likes` and an optional filtered
+// `likes` relation (containing at most the current user's own like row)
+// into a flat likeCount/likedByMe pair, and drops the internal fields.
+function shapeListingWithLikes<T extends { _count?: { likes: number }; likes?: unknown[] }>(
+  listing: T
+): Omit<T, '_count' | 'likes'> & { likeCount: number; likedByMe: boolean } {
+  const { _count, likes, ...rest } = listing;
+  return {
+    ...rest,
+    likeCount: _count?.likes ?? 0,
+    likedByMe: Array.isArray(likes) && likes.length > 0,
+  };
+}
+
 // GET /listings - browse active listings.
-// Filters: category, country, decade (a "decade" param like "1950" matches
-// years 1950-1959 inclusive), minPrice/maxPrice (e.g. band filters in $100
-// increments - a UI can send minPrice=100&maxPrice=200 for "$100-$200").
+// Filters: category, country (each accepts a single value or a
+// comma-separated list for multi-select, e.g. category=Stamps,Coins),
+// decade (a "decade" param like "1950" matches years 1950-1959 inclusive),
+// minPrice/maxPrice (e.g. band filters in $100 increments - a UI can send
+// minPrice=100&maxPrice=200 for "$100-$200").
 // Sort: one of newest (default), oldest, price_asc, price_desc,
-// year_newest, year_oldest.
-// A non-ACTIVE status filter (DRAFT, REMOVED, etc.) is only honored when the
-// caller is asking about their own listings - otherwise a seller's
-// unpublished drafts or removed listings would be publicly browsable.
+// year_newest, year_oldest, most_liked.
+// A non-ACTIVE status filter (DRAFT, PAUSED, REMOVED, etc.) - including the
+// special value ALL - is only honored when the caller is asking about their
+// own listings (status=ALL is how a seller's "My Listings" view sees every
+// status at once) - otherwise a seller's unpublished/paused/removed
+// listings would be publicly browsable.
 listingsRouter.get('/', optionalAuth, asyncHandler(async (req, res) => {
   const { category, sellerId, status, country, decade, minPrice, maxPrice, sort } = req.query;
 
   const requestedStatus = status ? String(status) : 'ACTIVE';
   const isOwnListings = !!sellerId && req.user?.userId === String(sellerId);
   const effectiveStatus = requestedStatus === 'ACTIVE' || isOwnListings ? requestedStatus : 'ACTIVE';
+
+  const categoryList = category ? String(category).split(',').map((s) => s.trim()).filter(Boolean) : [];
+  const countryList = country ? String(country).split(',').map((s) => s.trim()).filter(Boolean) : [];
 
   let yearFilter: { gte: number; lte: number } | undefined;
   if (decade) {
@@ -50,22 +71,34 @@ listingsRouter.get('/', optionalAuth, asyncHandler(async (req, res) => {
     };
   }
 
-  const orderBy = (sort && SORT_OPTIONS[String(sort) as keyof typeof SORT_OPTIONS]) || SORT_OPTIONS.newest;
+  const isMostLiked = sort === 'most_liked';
+  const orderBy = isMostLiked
+    ? undefined // handled by a separate sort pass below, since it's not a plain column
+    : (sort && SORT_OPTIONS[String(sort) as keyof typeof SORT_OPTIONS]) || SORT_OPTIONS.newest;
 
   const listings = await prisma.listing.findMany({
     where: {
-      ...(category ? { category: String(category) } : {}),
+      ...(categoryList.length === 1 ? { category: categoryList[0] } : categoryList.length > 1 ? { category: { in: categoryList } } : {}),
       ...(sellerId ? { sellerId: String(sellerId) } : {}),
-      ...(country ? { country: String(country) } : {}),
+      ...(countryList.length === 1 ? { country: countryList[0] } : countryList.length > 1 ? { country: { in: countryList } } : {}),
       ...(yearFilter ? { year: yearFilter } : {}),
       ...(priceFilter ? { price: priceFilter } : {}),
-      status: effectiveStatus as any,
+      ...(effectiveStatus === 'ALL' ? {} : { status: effectiveStatus as any }),
     },
-    orderBy,
-    include: { seller: { select: { id: true, name: true } } },
+    ...(orderBy ? { orderBy } : {}),
+    include: {
+      seller: { select: { id: true, name: true } },
+      _count: { select: { likes: true } },
+      ...(req.user ? { likes: { where: { userId: req.user.userId }, select: { id: true } } } : {}),
+    },
   });
 
-  res.json(listings);
+  let shaped = listings.map(shapeListingWithLikes);
+  if (isMostLiked) {
+    shaped = shaped.sort((a, b) => b.likeCount - a.likeCount);
+  }
+
+  res.json(shaped);
 }));
 
 // GET /listings/filters - options for building a filter UI: every country
@@ -111,6 +144,8 @@ listingsRouter.get('/:id', optionalAuth, asyncHandler(async (req, res) => {
     include: {
       seller: { select: { id: true, name: true } },
       bids: { orderBy: { createdAt: 'desc' } },
+      _count: { select: { likes: true } },
+      ...(req.user ? { likes: { where: { userId: req.user.userId }, select: { id: true } } } : {}),
     },
   });
 
@@ -125,7 +160,7 @@ listingsRouter.get('/:id', optionalAuth, asyncHandler(async (req, res) => {
       ? listing.bids
       : listing.bids.filter((bid) => bid.bidderId === userId);
 
-  res.json({ ...listing, bids: visibleBids });
+  res.json({ ...shapeListingWithLikes(listing), bids: visibleBids });
 }));
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -195,6 +230,48 @@ listingsRouter.post('/:id/publish', requireAuth, asyncHandler(async (req, res) =
   res.json(listing);
 }));
 
+// POST /listings/:id/pause - hide an ACTIVE listing from browsing without
+// deleting it. Paused listings are auto-removed after a grace period if
+// never resumed (see the maintenance job discussed in DEPLOYMENT.md).
+listingsRouter.post('/:id/pause', requireAuth, asyncHandler(async (req, res) => {
+  const existing = await prisma.listing.findUnique({ where: { id: String(req.params.id) } });
+  if (!existing) return res.status(404).json({ error: { message: 'Listing not found' } });
+  if (existing.sellerId !== req.user!.userId) {
+    return res.status(403).json({ error: { message: 'Not your listing' } });
+  }
+  if (existing.status !== 'ACTIVE') {
+    return res.status(400).json({ error: { message: `Cannot pause a listing with status ${existing.status}` } });
+  }
+
+  const listing = await prisma.listing.update({
+    where: { id: String(req.params.id) },
+    data: { status: 'PAUSED', pausedAt: new Date() },
+  });
+
+  res.json(listing);
+}));
+
+// POST /listings/:id/resume - bring a PAUSED listing back to ACTIVE. The
+// original free-hosting/paid-through dates are left untouched (time spent
+// paused still counts against them - see PATCH docs below for rationale).
+listingsRouter.post('/:id/resume', requireAuth, asyncHandler(async (req, res) => {
+  const existing = await prisma.listing.findUnique({ where: { id: String(req.params.id) } });
+  if (!existing) return res.status(404).json({ error: { message: 'Listing not found' } });
+  if (existing.sellerId !== req.user!.userId) {
+    return res.status(403).json({ error: { message: 'Not your listing' } });
+  }
+  if (existing.status !== 'PAUSED') {
+    return res.status(400).json({ error: { message: `Cannot resume a listing with status ${existing.status}` } });
+  }
+
+  const listing = await prisma.listing.update({
+    where: { id: String(req.params.id) },
+    data: { status: 'ACTIVE', pausedAt: null },
+  });
+
+  res.json(listing);
+}));
+
 // PATCH /listings/:id - update listing fields (price changes, description edits, etc.)
 listingsRouter.patch('/:id', requireAuth, asyncHandler(async (req, res) => {
   const existing = await prisma.listing.findUnique({ where: { id: String(req.params.id) } });
@@ -241,4 +318,55 @@ listingsRouter.delete('/:id', requireAuth, asyncHandler(async (req, res) => {
     data: { status: 'REMOVED' },
   });
   res.status(204).send();
+}));
+
+// ---------- Likes / Saves ----------
+
+// POST /listings/:id/like
+listingsRouter.post('/:id/like', requireAuth, asyncHandler(async (req, res) => {
+  const listing = await prisma.listing.findUnique({ where: { id: String(req.params.id) } });
+  if (!listing) return res.status(404).json({ error: { message: 'Listing not found' } });
+  if (listing.sellerId === req.user!.userId) {
+    return res.status(400).json({ error: { message: 'You cannot like your own listing' } });
+  }
+
+  // Idempotent: liking something already liked just succeeds quietly,
+  // rather than erroring on the unique constraint.
+  await prisma.like.upsert({
+    where: { userId_listingId: { userId: req.user!.userId, listingId: listing.id } },
+    create: { userId: req.user!.userId, listingId: listing.id },
+    update: {},
+  });
+
+  const likeCount = await prisma.like.count({ where: { listingId: listing.id } });
+  res.json({ liked: true, likeCount });
+}));
+
+// DELETE /listings/:id/like
+listingsRouter.delete('/:id/like', requireAuth, asyncHandler(async (req, res) => {
+  await prisma.like.deleteMany({ where: { userId: req.user!.userId, listingId: String(req.params.id) } });
+  const likeCount = await prisma.like.count({ where: { listingId: String(req.params.id) } });
+  res.json({ liked: false, likeCount });
+}));
+
+// GET /listings/liked/mine - the current user's saved/liked listings
+listingsRouter.get('/liked/mine', requireAuth, asyncHandler(async (req, res) => {
+  const likes = await prisma.like.findMany({
+    where: { userId: req.user!.userId },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      listing: {
+        include: {
+          seller: { select: { id: true, name: true } },
+          _count: { select: { likes: true } },
+        },
+      },
+    },
+  });
+
+  const listings = likes
+    .map((like) => ({ ...like.listing, likedByMe: true }))
+    .map(shapeListingWithLikes);
+
+  res.json(listings);
 }));

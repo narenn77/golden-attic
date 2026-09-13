@@ -36,6 +36,7 @@ model User {
   bidsMade              Bid[]     @relation("BidderBids")
   ordersAsBuyer         Order[]   @relation("BuyerOrders")
   ordersAsSeller        Order[]   @relation("SellerOrders")
+  likes                 Like[]
 
   @@index([email])
 }
@@ -45,6 +46,7 @@ model User {
 enum ListingStatus {
   DRAFT
   ACTIVE
+  PAUSED
   SOLD
   EXPIRED
   REMOVED
@@ -73,6 +75,8 @@ model Listing {
   freeUntil         DateTime?     // end of first free hosting month
   hostingPaidUntil  DateTime?     // hosting fee paid through this date
   soldAt            DateTime?
+  pausedAt          DateTime?     // when the seller paused it - paused listings are
+                                  // hidden from browsing and auto-removed ~30 days later
 
   // Provenance fields - especially valuable for stamps, coins, currency.
   // Not applicable to every category, so both are optional.
@@ -87,12 +91,30 @@ model Listing {
   bids              Bid[]
   orders            Order[]
   hostingFees       HostingFee[]
+  likes             Like[]
 
   @@index([sellerId])
   @@index([status])
   @@index([category])
   @@index([country])
   @@index([year])
+}
+
+// ---------- Likes / Saves ----------
+// One system, two names people use interchangeably - a buyer "liking" or
+// "saving" an item is the same action: a row in this table.
+
+model Like {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  listingId String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId]) // a user can only like a listing once
+  @@index([listingId])
+  @@index([userId])
 }
 
 // ---------- Bidding ----------
