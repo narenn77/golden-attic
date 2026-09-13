@@ -1,0 +1,105 @@
+# Running Golden Attic
+
+Nothing is hosted publicly yet — this covers both getting it running on your
+own machine right now, and deploying it for real (free tier) so you have a
+shareable URL.
+
+## Option A: Run locally (fastest way to see the UI today)
+
+You'll need Node.js 22+, and a Postgres database (either installed locally,
+or a free one from [Neon](https://neon.tech) or [Supabase](https://supabase.com) —
+the latter is easier if you don't want to install Postgres yourself).
+
+1. **Clone the repo and install everything** (this is an npm workspaces
+   monorepo, so one install at the root covers backend, mobile, and web):
+   ```
+   git clone https://github.com/narenn77/golden-attic.git
+   cd golden-attic
+   npm install
+   ```
+
+2. **Backend** — copy `packages/backend/.env.example` to
+   `packages/backend/.env` and fill in:
+   - `DATABASE_URL` — your Postgres connection string
+   - `JWT_SECRET` — any long random string
+   - Leave `STRIPE_SECRET_KEY`, `RESEND_API_KEY`, `ANTHROPIC_API_KEY` blank
+     for now if you just want to click through the UI — those features will
+     no-op/fail gracefully with a clear error rather than crash the server.
+
+   Then:
+   ```
+   cd packages/backend
+   npx prisma migrate deploy
+   npm run dev
+   ```
+   This starts the API on `http://localhost:4000`. Confirm with
+   `curl http://localhost:4000/health`.
+
+3. **Website** — in a second terminal:
+   ```
+   cd apps/web
+   cp .env.example .env.local
+   npm run dev
+   ```
+   Open `http://localhost:3000`. `NEXT_PUBLIC_API_BASE_URL` in `.env.local`
+   already defaults to `http://localhost:4000`, so it should talk to the
+   backend automatically.
+
+4. **Mobile app** (optional, needs the Expo Go app on your phone, or an
+   iOS/Android simulator):
+   ```
+   cd apps/mobile
+   cp .env.example .env
+   ```
+   Edit `EXPO_PUBLIC_API_BASE_URL` in that `.env` to your computer's LAN IP
+   (not `localhost` — your phone can't reach your laptop's localhost), e.g.
+   `http://192.168.1.42:4000`. Then:
+   ```
+   npx expo start
+   ```
+   Scan the QR code with Expo Go.
+
+With no Stripe/Anthropic keys set, you can still sign up, log in, create and
+publish listings, and place bids. AI-drafted listings and checkout will need
+real API keys (step below).
+
+## Option B: Deploy for real (free tier, gets you a real URL)
+
+Three pieces, all with free tiers:
+
+1. **Database — [Neon](https://neon.tech) or [Supabase](https://supabase.com)**
+   Create a project, copy the Postgres connection string.
+
+2. **Backend — [Render](https://render.com)**
+   This repo includes `render.yaml` at the root. In the Render dashboard:
+   "New +" → "Blueprint" → connect the `narenn77/golden-attic` repo → Render
+   detects `render.yaml` automatically. You'll be prompted to fill in the
+   `sync: false` environment variables (`DATABASE_URL` from step 1,
+   `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`,
+   `ANTHROPIC_API_KEY`). `JWT_SECRET` is generated for you automatically.
+   Once deployed, note the URL Render gives you (something like
+   `https://golden-attic-backend.onrender.com`).
+
+3. **Website — [Vercel](https://vercel.com)**
+   Import the same repo. In the project settings, set **Root Directory** to
+   `apps/web` (important — this is a monorepo). Add an environment variable
+   `NEXT_PUBLIC_API_BASE_URL` pointing at your Render backend URL from step 2,
+   plus `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` if you have a Stripe account.
+   Deploy — Vercel gives you a URL immediately.
+
+4. Go back to Render and set `APP_URL` to your new Vercel URL (used in
+   verification/reset emails).
+
+Mobile app deployment (an actual App Store / Play Store build, or even a
+shareable Expo preview) is a separate step via
+[EAS Build](https://docs.expo.dev/build/introduction/) — worth doing once
+the web/backend side is confirmed working, not before.
+
+## Getting real API keys (only needed for AI drafting / payments / email)
+
+- **Stripe**: [dashboard.stripe.com](https://dashboard.stripe.com) → API keys
+  (use test mode keys to start). For the webhook secret, add a webhook
+  endpoint pointing at `https://<your-backend>/payments/webhook` and Stripe
+  gives you the signing secret.
+- **Resend**: [resend.com](https://resend.com) → API Keys.
+- **Anthropic**: [console.anthropic.com](https://console.anthropic.com) → API Keys.

@@ -1,0 +1,33 @@
+# Render Blueprint - https://render.com/docs/blueprint-spec
+# Deploy: connect this repo in the Render dashboard and it will detect this file.
+services:
+  - type: web
+    name: golden-attic-backend
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: npm install && cd packages/backend && npx prisma generate
+    startCommand: cd packages/backend && npx prisma migrate deploy && npx tsx src/index.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DATABASE_URL
+        sync: false # set this to your Postgres connection string (e.g. from Neon or Render's own Postgres)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: APP_URL
+        sync: false # your web app's URL, once deployed (used in email links)
