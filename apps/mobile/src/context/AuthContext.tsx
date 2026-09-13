@@ -3,7 +3,7 @@ import * as authApi from '../api/auth';
 import { setToken, clearToken, getToken } from '../api/client';
 
 interface AuthContextValue {
-  user: authApi.AuthUser | null;
+  user: (authApi.AuthUser & Partial<authApi.UserAddress>) | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (input: { email: string; password: string; name: string; phone?: string }) => Promise<void>;
@@ -14,7 +14,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<authApi.AuthUser | null>(null);
+  const [user, setUser] = useState<(authApi.AuthUser & Partial<authApi.UserAddress>) | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {

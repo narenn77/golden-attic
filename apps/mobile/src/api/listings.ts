@@ -13,6 +13,7 @@ export interface Listing {
   aiGenerated: boolean;
   year: number | null;
   country: string | null;
+  weightOz: number | null;
   createdAt: string;
   freeUntil: string | null;
   hostingPaidUntil: string | null;
@@ -57,6 +58,7 @@ export function createListing(input: {
   allowBidding?: boolean;
   year?: number | null;
   country?: string | null;
+  weightOz?: number | null;
 }) {
   return apiRequest<Listing>('/listings', { method: 'POST', body: input });
 }

@@ -8,6 +8,15 @@ export interface AuthUser {
   emailVerified: boolean;
 }
 
+export interface UserAddress {
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
+}
+
 interface AuthResponse {
   token: string;
   user: AuthUser;
@@ -22,7 +31,11 @@ export function login(input: { email: string; password: string }) {
 }
 
 export function getMe() {
-  return apiRequest<AuthUser & { phone: string | null; createdAt: string }>('/auth/me');
+  return apiRequest<AuthUser & { phone: string | null; createdAt: string } & UserAddress>('/auth/me');
+}
+
+export function updateAddress(address: Partial<UserAddress>) {
+  return apiRequest<AuthUser & UserAddress>('/users/me/address', { method: 'PATCH', body: address });
 }
 
 export function forgotPassword(email: string) {

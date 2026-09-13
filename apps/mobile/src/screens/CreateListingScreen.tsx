@@ -22,6 +22,7 @@ export default function CreateListingScreen({ navigation }: any) {
   const [price, setPrice] = useState('');
   const [year, setYear] = useState('');
   const [country, setCountry] = useState('');
+  const [weightOz, setWeightOz] = useState('');
 
   async function pickImage() {
     if (images.length >= MAX_IMAGES) {
@@ -95,6 +96,7 @@ export default function CreateListingScreen({ navigation }: any) {
         aiGenerated: draft !== null,
         year: year.trim() ? parseInt(year.trim(), 10) : null,
         country: country.trim() || null,
+        weightOz: weightOz.trim() ? parseInt(weightOz.trim(), 10) : null,
       });
       await publishListing(listing.id);
       Alert.alert('Listing published!', 'Your item is now live.', [
@@ -176,6 +178,13 @@ export default function CreateListingScreen({ navigation }: any) {
           onChangeText={setCountry}
         />
       </View>
+      <TextInput
+        style={styles.input}
+        placeholder="Package weight in oz (optional, helps estimate shipping)"
+        keyboardType="number-pad"
+        value={weightOz}
+        onChangeText={setWeightOz}
+      />
       <TextInput
         style={styles.input}
         placeholder="Price ($)"

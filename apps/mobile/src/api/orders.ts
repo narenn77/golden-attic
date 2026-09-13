@@ -8,11 +8,27 @@ export interface Order {
   amount: string;
   commissionAmount: string;
   sellerPayoutAmount: string;
+  localPickup: boolean;
+  shippingCost: string | null;
+  shippingCity: string | null;
   status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';
   createdAt: string;
 }
 
-export function createOrder(input: { listingId: string; amount: number }) {
+export interface ShippingQuote {
+  shippingCost: number;
+  service: string;
+  estimated: boolean;
+  localPickupEligible: boolean;
+  sellerCity: string | null;
+  sellerState: string | null;
+}
+
+export function fetchShippingQuote(listingId: string) {
+  return apiRequest<ShippingQuote>(`/listings/${listingId}/shipping-quote`);
+}
+
+export function createOrder(input: { listingId: string; localPickup?: boolean }) {
   return apiRequest<Order>('/orders', { method: 'POST', body: input });
 }
 
@@ -22,4 +38,8 @@ export function fetchOrder(id: string) {
 
 export function fetchMyOrders() {
   return apiRequest<Order[]>('/orders');
+}
+
+export function completeOrder(id: string) {
+  return apiRequest<Order>(`/orders/${id}/complete`, { method: 'POST' });
 }
