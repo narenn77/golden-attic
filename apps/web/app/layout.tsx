@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Golden Attic",
-  description: "A marketplace for collectibles and used items",
+  title: "Golden Attic — Turn your attic into gold",
+  description: "Turn your attic into gold. A marketplace for stamps, coins, currency, and collectibles from real sellers.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

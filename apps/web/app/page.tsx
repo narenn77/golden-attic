@@ -43,8 +43,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-1">Browse collectibles</h1>
-      <p className="text-neutral-500 mb-6">Stamps, coins, vintage toys, and more from real sellers.</p>
+      <h1 className="text-2xl font-bold mb-1">Turn your attic into gold.</h1>
+      <p className="text-neutral-500 mb-6">Browse stamps, coins, vintage toys, and more from real sellers.</p>
 
       {loadError && (
         <p className="text-red-600 mb-6">Could not load listings right now. Please try again shortly.</p>

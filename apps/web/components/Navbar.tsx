@@ -2,15 +2,18 @@
 
 import Link from 'next/link';
 import { useAuth } from '../lib/AuthContext';
+import Logo from './Logo';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
 
   return (
     <header className="border-b border-neutral-200 bg-white sticky top-0 z-10">
-      <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold text-amber-700">
-          Golden Attic
+      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <Logo size={30} />
+          <span className="text-xl font-bold text-amber-700">Golden Attic</span>
+          <span className="hidden sm:inline text-xs text-neutral-400 font-normal ml-1">Turn your attic into gold</span>
         </Link>
 
         <nav className="flex items-center gap-4">

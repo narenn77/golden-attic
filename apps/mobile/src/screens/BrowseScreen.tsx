@@ -47,6 +47,9 @@ export default function BrowseScreen({ navigation }: any) {
         columnWrapperStyle={styles.row}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        ListHeaderComponent={
+          <Text style={styles.tagline}>Turn your attic into gold.</Text>
+        }
         ListEmptyComponent={
           <View style={styles.centered}>
             <Text style={styles.emptyText}>No listings yet. Be the first to sell something!</Text>
@@ -67,4 +70,5 @@ const styles = StyleSheet.create({
   row: { justifyContent: 'space-between' },
   error: { color: '#D32F2F', textAlign: 'center', padding: 8 },
   emptyText: { color: '#888', textAlign: 'center', fontSize: 15 },
+  tagline: { fontSize: 14, color: '#B8860B', fontWeight: '600', marginBottom: 12 },
 });
