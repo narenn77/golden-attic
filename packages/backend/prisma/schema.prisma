@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Users ----------
+
+model User {
+  id                    String   @id @default(uuid())
+  email                 String   @unique
+  phone                 String?
+  name                  String
+  passwordHash          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Seller-related
+  isSeller              Boolean  @default(false)
+  stripeConnectAccountId String? @unique  // for receiving payouts as a seller
+  stripeCustomerId      String?  @unique  // for making payments as a buyer
+
+  listings              Listing[] @relation("SellerListings")
+  bidsMade              Bid[]     @relation("BidderBids")
+  ordersAsBuyer         Order[]   @relation("BuyerOrders")
+  ordersAsSeller        Order[]   @relation("SellerOrders")
+
+  @@index([email])
+}
+
+// ---------- Listings ----------
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  SOLD
+  EXPIRED
+  REMOVED
+}
+
+model Listing {
+  id                String        @id @default(uuid())
+  sellerId          String
+  seller            User          @relation("SellerListings", fields: [sellerId], references: [id])
+
+  title             String
+  description       String
+  category          String
+  price             Decimal       @db.Decimal(10, 2)
+  images            String[]      // URLs to stored images
+  status            ListingStatus @default(DRAFT)
+
+  // AI-assisted listing metadata
+  aiGenerated        Boolean      @default(false)
+  aiSuggestedTitle   String?
+  aiSuggestedPrice   Decimal?     @db.Decimal(10, 2)
+  aiSuggestedCategory String?
+
+  // Hosting / monetization lifecycle
+  publishedAt       DateTime?     // when it went ACTIVE
+  freeUntil         DateTime?     // end of first free hosting month
+  hostingPaidUntil  DateTime?     // hosting fee paid through this date
+  soldAt            DateTime?
+
+  allowBidding      Boolean       @default(true)
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  bids              Bid[]
+  order             Order?
+  hostingFees       HostingFee[]
+
+  @@index([sellerId])
+  @@index([status])
+  @@index([category])
+}
+
+// ---------- Bidding ----------
+
+enum BidStatus {
+  PENDING     // buyer placed a bid, awaiting seller response
+  COUNTERED   // seller offered a lower price back to buyer
+  ACCEPTED    // bid (or counter) accepted, ready to check out
+  REJECTED
+  WITHDRAWN
+}
+
+model Bid {
+  id            String    @id @default(uuid())
+  listingId     String
+  listing       Listing   @relation(fields: [listingId], references: [id])
+  bidderId      String
+  bidder        User      @relation("BidderBids", fields: [bidderId], references: [id])
+
+  amount        Decimal   @db.Decimal(10, 2)
+  counterAmount Decimal?  @db.Decimal(10, 2) // set when seller counters
+  status        BidStatus @default(PENDING)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([listingId])
+  @@index([bidderId])
+}
+
+// ---------- Orders / Payments ----------
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  SHIPPED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+model Order {
+  id                   String      @id @default(uuid())
+  listingId            String      @unique
+  listing              Listing     @relation(fields: [listingId], references: [id])
+  buyerId              String
+  buyer                User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  sellerId             String
+  seller               User        @relation("SellerOrders", fields: [sellerId], references: [id])
+
+  amount               Decimal     @db.Decimal(10, 2) // final sale price
+  commissionAmount     Decimal     @db.Decimal(10, 2) // platform's cut
+  sellerPayoutAmount   Decimal     @db.Decimal(10, 2) // amount - commission
+
+  stripePaymentIntentId String?    @unique
+  stripeTransferId      String?    // transfer to seller's connected account
+
+  status               OrderStatus @default(PENDING_PAYMENT)
+
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  @@index([buyerId])
+  @@index([sellerId])
+}
+
+// ---------- Hosting fees (1%/month after first free month) ----------
+
+model HostingFee {
+  id                String   @id @default(uuid())
+  listingId         String
+  listing           Listing  @relation(fields: [listingId], references: [id])
+
+  periodStart       DateTime
+  periodEnd         DateTime
+  amount            Decimal  @db.Decimal(10, 2)
+  paid              Boolean  @default(false)
+  stripeInvoiceId   String?
+
+  createdAt         DateTime @default(now())
+
+  @@index([listingId])
+}
