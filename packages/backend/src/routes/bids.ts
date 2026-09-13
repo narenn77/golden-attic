@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { requireAuth } from '../middleware/requireAuth.js';
 
 export const bidsRouter = Router();
 
 // POST /bids - buyer places a bid on a listing
-bidsRouter.post('/', asyncHandler(async (req, res) => {
-  const { listingId, bidderId, amount } = req.body;
+bidsRouter.post('/', requireAuth, asyncHandler(async (req, res) => {
+  const { listingId, amount } = req.body;
 
-  if (!listingId || !bidderId || amount == null) {
+  if (!listingId || amount == null) {
     return res.status(400).json({ error: { message: 'Missing required bid fields' } });
   }
 
@@ -18,31 +19,42 @@ bidsRouter.post('/', asyncHandler(async (req, res) => {
   if (listing.status !== 'ACTIVE') return res.status(400).json({ error: { message: 'Listing is not active' } });
 
   const bid = await prisma.bid.create({
-    data: { listingId, bidderId, amount, status: 'PENDING' },
+    data: { listingId, bidderId: req.user!.userId, amount, status: 'PENDING' },
   });
 
   res.status(201).json(bid);
 }));
 
-// POST /bids/:id/counter - seller counters with a lower price
-bidsRouter.post('/:id/counter', asyncHandler(async (req, res) => {
+// POST /bids/:id/counter - only the listing's seller can counter a bid
+bidsRouter.post('/:id/counter', requireAuth, asyncHandler(async (req, res) => {
   const { counterAmount } = req.body;
   if (counterAmount == null) {
     return res.status(400).json({ error: { message: 'counterAmount is required' } });
   }
 
+  const existing = await prisma.bid.findUnique({ where: { id: String(req.params.id) }, include: { listing: true } });
+  if (!existing) return res.status(404).json({ error: { message: 'Bid not found' } });
+  if (existing.listing.sellerId !== req.user!.userId) {
+    return res.status(403).json({ error: { message: 'Only the listing seller can counter this bid' } });
+  }
+
   const bid = await prisma.bid.update({
-    where: { id: req.params.id },
+    where: { id: String(req.params.id) },
     data: { counterAmount, status: 'COUNTERED' },
   });
 
   res.json(bid);
 }));
 
-// POST /bids/:id/accept - either party accepts the current price on the table
-bidsRouter.post('/:id/accept', asyncHandler(async (req, res) => {
+// POST /bids/:id/accept - either the bidder or the seller can accept the current offer
+bidsRouter.post('/:id/accept', requireAuth, asyncHandler(async (req, res) => {
+  const existing = await prisma.bid.findUnique({ where: { id: String(req.params.id) }, include: { listing: true } });
+  if (!existing) return res.status(404).json({ error: { message: 'Bid not found' } });
+  const isParty = existing.bidderId === req.user!.userId || existing.listing.sellerId === req.user!.userId;
+  if (!isParty) return res.status(403).json({ error: { message: 'Not a party to this bid' } });
+
   const bid = await prisma.bid.update({
-    where: { id: req.params.id },
+    where: { id: String(req.params.id) },
     data: { status: 'ACCEPTED' },
   });
 
@@ -50,9 +62,14 @@ bidsRouter.post('/:id/accept', asyncHandler(async (req, res) => {
 }));
 
 // POST /bids/:id/reject
-bidsRouter.post('/:id/reject', asyncHandler(async (req, res) => {
+bidsRouter.post('/:id/reject', requireAuth, asyncHandler(async (req, res) => {
+  const existing = await prisma.bid.findUnique({ where: { id: String(req.params.id) }, include: { listing: true } });
+  if (!existing) return res.status(404).json({ error: { message: 'Bid not found' } });
+  const isParty = existing.bidderId === req.user!.userId || existing.listing.sellerId === req.user!.userId;
+  if (!isParty) return res.status(403).json({ error: { message: 'Not a party to this bid' } });
+
   const bid = await prisma.bid.update({
-    where: { id: req.params.id },
+    where: { id: String(req.params.id) },
     data: { status: 'REJECTED' },
   });
 

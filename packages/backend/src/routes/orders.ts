@@ -1,17 +1,19 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { requireAuth } from '../middleware/requireAuth.js';
 
 export const ordersRouter = Router();
 
-// TODO: commission rate not yet finalized with product owner - placeholder.
-const PLATFORM_COMMISSION_RATE = 0.10;
+const PLATFORM_COMMISSION_RATE = 0.05; // 5% of sale price - decided
 
-// POST /orders - create an order from an accepted bid or direct "buy now"
-ordersRouter.post('/', asyncHandler(async (req, res) => {
-  const { listingId, buyerId, amount } = req.body;
+// POST /orders - create an order from an accepted bid or direct "buy now".
+// Buyer is taken from the authenticated session.
+ordersRouter.post('/', requireAuth, asyncHandler(async (req, res) => {
+  const { listingId, amount } = req.body;
+  const buyerId = req.user!.userId;
 
-  if (!listingId || !buyerId || amount == null) {
+  if (!listingId || amount == null) {
     return res.status(400).json({ error: { message: 'Missing required order fields' } });
   }
 
@@ -47,7 +49,7 @@ ordersRouter.post('/', asyncHandler(async (req, res) => {
 // GET /orders/:id
 ordersRouter.get('/:id', asyncHandler(async (req, res) => {
   const order = await prisma.order.findUnique({
-    where: { id: req.params.id },
+    where: { id: String(req.params.id) },
     include: { listing: true, buyer: { select: { id: true, name: true } }, seller: { select: { id: true, name: true } } },
   });
 
@@ -60,7 +62,7 @@ ordersRouter.patch('/:id/status', asyncHandler(async (req, res) => {
   const { status, stripePaymentIntentId, stripeTransferId } = req.body;
 
   const order = await prisma.order.update({
-    where: { id: req.params.id },
+    where: { id: String(req.params.id) },
     data: {
       ...(status ? { status } : {}),
       ...(stripePaymentIntentId ? { stripePaymentIntentId } : {}),

@@ -1,33 +1,16 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
+import { requireAuth } from '../middleware/requireAuth.js';
 
 export const usersRouter = Router();
 
-// POST /users - create a new user account
-// NOTE: this is a placeholder. Real auth (password hashing, sessions/JWT,
-// email verification) still needs to be designed - see next milestone.
-usersRouter.post('/', asyncHandler(async (req, res) => {
-  const { email, name, phone } = req.body;
-
-  if (!email || !name) {
-    return res.status(400).json({ error: { message: 'email and name are required' } });
-  }
-
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) return res.status(409).json({ error: { message: 'User already exists' } });
-
-  const user = await prisma.user.create({
-    data: { email, name, phone },
-  });
-
-  res.status(201).json(user);
-}));
+// Account creation now happens via POST /auth/signup, which sets a password.
 
 // GET /users/:id
 usersRouter.get('/:id', asyncHandler(async (req, res) => {
   const user = await prisma.user.findUnique({
-    where: { id: req.params.id },
+    where: { id: String(req.params.id) },
     select: {
       id: true, email: true, name: true, phone: true,
       isSeller: true, createdAt: true,
@@ -38,10 +21,14 @@ usersRouter.get('/:id', asyncHandler(async (req, res) => {
   res.json(user);
 }));
 
-// PATCH /users/:id/become-seller - flips a buyer into a seller
-usersRouter.patch('/:id/become-seller', asyncHandler(async (req, res) => {
+// PATCH /users/:id/become-seller - flips a buyer into a seller (self only)
+usersRouter.patch('/:id/become-seller', requireAuth, asyncHandler(async (req, res) => {
+  if (req.user!.userId !== String(req.params.id)) {
+    return res.status(403).json({ error: { message: 'Cannot modify another user' } });
+  }
+
   const user = await prisma.user.update({
-    where: { id: req.params.id },
+    where: { id: String(req.params.id) },
     data: { isSeller: true },
   });
 
