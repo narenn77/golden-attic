@@ -33,6 +33,7 @@ export default function SellPage() {
   const [price, setPrice] = useState('');
   const [year, setYear] = useState('');
   const [country, setCountry] = useState('');
+  const [weightOz, setWeightOz] = useState('');
 
   async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
@@ -90,6 +91,7 @@ export default function SellPage() {
         aiGenerated: draft !== null,
         year: year.trim() ? parseInt(year.trim(), 10) : null,
         country: country.trim() || null,
+        weightOz: weightOz.trim() ? parseInt(weightOz.trim(), 10) : null,
       });
       await publishListing(listing.id);
       router.push(`/listing/${listing.id}`);
@@ -188,6 +190,13 @@ export default function SellPage() {
             className="flex-1 border border-neutral-300 rounded-md px-4 py-3"
           />
         </div>
+        <input
+          type="number"
+          placeholder="Package weight in ounces (optional, helps estimate shipping)"
+          value={weightOz}
+          onChange={(e) => setWeightOz(e.target.value)}
+          className="w-full border border-neutral-300 rounded-md px-4 py-3"
+        />
         <input
           type="number"
           step="0.01"
