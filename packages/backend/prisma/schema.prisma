@@ -32,11 +32,27 @@ model User {
   stripeConnectAccountId String? @unique  // for receiving payouts as a seller
   stripeCustomerId      String?  @unique  // for making payments as a buyer
 
+  // Address - used as a seller's ship-from location and pre-filled as a
+  // buyer's default ship-to address at checkout (checkout can override it
+  // per-order without changing this saved default). One address per user
+  // for now, not multiple saved addresses - kept simple for v1.
+  addressLine1          String?
+  addressLine2          String?
+  city                  String?
+  state                 String?
+  postalCode            String?
+  country               String?  @default("US")
+
   listings              Listing[] @relation("SellerListings")
   bidsMade              Bid[]     @relation("BidderBids")
   ordersAsBuyer         Order[]   @relation("BuyerOrders")
   ordersAsSeller        Order[]   @relation("SellerOrders")
   likes                 Like[]
+  conversationsAsBuyer  Conversation[] @relation("BuyerConversations")
+  conversationsAsSeller Conversation[] @relation("SellerConversations")
+  messages              Message[]
+  ratingsGiven          Rating[] @relation("RatingsGiven")
+  ratingsReceived       Rating[] @relation("RatingsReceived")
 
   @@index([email])
 }
@@ -77,11 +93,17 @@ model Listing {
   soldAt            DateTime?
   pausedAt          DateTime?     // when the seller paused it - paused listings are
                                   // hidden from browsing and auto-removed ~30 days later
+  expiryWarningSentAt DateTime?   // when we last emailed a free-hosting-expiring warning,
+                                  // so the maintenance job never sends it twice
 
   // Provenance fields - especially valuable for stamps, coins, currency.
   // Not applicable to every category, so both are optional.
   year              Int?          // year of issue/manufacture
   country           String?       // country of origin
+
+  // Shipping - optional; when absent, checkout falls back to a
+  // conservative default weight band for the rate estimate.
+  weightOz          Int?          // package weight in ounces
 
   allowBidding      Boolean       @default(true)
 
@@ -92,6 +114,7 @@ model Listing {
   orders            Order[]
   hostingFees       HostingFee[]
   likes             Like[]
+  conversations     Conversation[]
 
   @@index([sellerId])
   @@index([status])
@@ -165,9 +188,20 @@ model Order {
   sellerId             String
   seller               User        @relation("SellerOrders", fields: [sellerId], references: [id])
 
-  amount               Decimal     @db.Decimal(10, 2) // final sale price
-  commissionAmount     Decimal     @db.Decimal(10, 2) // platform's cut
+  amount               Decimal     @db.Decimal(10, 2) // item price only
+  commissionAmount     Decimal     @db.Decimal(10, 2) // platform's cut (on item price only, not shipping)
   sellerPayoutAmount   Decimal     @db.Decimal(10, 2) // amount - commission
+
+  // Shipping - either a shipping address + calculated cost, or a local
+  // pickup arrangement (agreed via chat) with zero shipping cost.
+  localPickup           Boolean    @default(false)
+  shippingCost           Decimal?  @db.Decimal(10, 2)
+  shippingAddressLine1   String?
+  shippingAddressLine2   String?
+  shippingCity           String?
+  shippingState          String?
+  shippingPostalCode     String?
+  shippingCountry        String?
 
   stripePaymentIntentId String?    @unique
   stripeTransferId      String?    // transfer to seller's connected account
@@ -177,9 +211,70 @@ model Order {
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 
+  ratings              Rating[]
+
   @@index([buyerId])
   @@index([sellerId])
   @@index([listingId])
+}
+
+// ---------- Ratings ----------
+// Trust signal for both sides. Deliberately restricted to participants of
+// a COMPLETED order - anyone else rating would just be gameable noise.
+
+model Rating {
+  id            String   @id @default(uuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id])
+  raterId       String
+  rater         User     @relation("RatingsGiven", fields: [raterId], references: [id])
+  ratedUserId   String
+  ratedUser     User     @relation("RatingsReceived", fields: [ratedUserId], references: [id])
+
+  score         Int      // 1-5
+  comment       String?
+
+  createdAt     DateTime @default(now())
+
+  @@unique([orderId, raterId]) // one rating per person per order (buyer and seller each rate once)
+  @@index([ratedUserId])
+}
+
+// ---------- Messaging ----------
+// One conversation per (listing, buyer) pair - keeps every conversation
+// anchored to a specific item, which is what buyers and sellers are
+// actually discussing (the item itself, shipping vs. local pickup, etc).
+
+model Conversation {
+  id        String    @id @default(uuid())
+  listingId String
+  listing   Listing   @relation(fields: [listingId], references: [id])
+  buyerId   String
+  buyer     User      @relation("BuyerConversations", fields: [buyerId], references: [id])
+  sellerId  String
+  seller    User      @relation("SellerConversations", fields: [sellerId], references: [id])
+
+  messages  Message[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([listingId, buyerId])
+  @@index([buyerId])
+  @@index([sellerId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  body           String
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
 }
 
 // ---------- Hosting fees (1%/month after first free month) ----------
