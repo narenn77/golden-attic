@@ -11,6 +11,25 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.18.0] - 2026-09-13
+### Added
+- Ratings, on both web and mobile - the buyer/seller trust system:
+  - `POST /orders/:id/rate` - rate the other party, restricted to
+    participants of a COMPLETED order only (blocks rating before
+    completion, non-participants, and duplicate ratings)
+  - `POST /orders/:id/complete` companion flow: buyers confirm receipt on
+    paid orders, which is what unlocks rating eligibility for both sides
+  - `GET /users/:id/ratings` - average score, count, individual ratings
+    with rater name - the public trust signal
+  - New "My Orders" page/screen: every order you're part of, with
+    confirm-receipt and rate-this-transaction actions inline
+  - Seller's average rating now shown on listing pages
+  - `GET /orders` (list) now includes listing/buyer/seller details -
+    previously returned bare rows with no way to show what was ordered
+- Live-tested full flow: rating blocked before completion, buyer-only
+  completion, both rating directions, duplicate-rating blocked, aggregates
+  correct
+
 ## [v0.17.0] - 2026-09-13
 ### Added
 - Shipping, on both web and mobile:
