@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }: any) {
   const { user, logout } = useAuth();
 
   return (
@@ -21,8 +21,13 @@ export default function ProfileScreen() {
         <Text style={styles.sectionBody}>
           {user?.isSeller
             ? 'You can list items for sale.'
-            : 'Create your first listing to become a seller.'}
+            : 'Set up payouts to start selling your items.'}
         </Text>
+        <TouchableOpacity style={styles.payoutButton} onPress={() => navigation.navigate('SellerOnboarding')}>
+          <Text style={styles.payoutButtonText}>
+            {user?.isSeller ? 'Manage payout settings' : 'Set up payouts'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={logout}>
@@ -41,6 +46,8 @@ const styles = StyleSheet.create({
   section: { marginBottom: 24 },
   sectionLabel: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
   sectionBody: { fontSize: 14, color: '#666' },
+  payoutButton: { borderWidth: 1, borderColor: '#B8860B', borderRadius: 8, padding: 12, alignItems: 'center', marginTop: 12 },
+  payoutButtonText: { color: '#B8860B', fontWeight: '600' },
   logoutButton: { borderWidth: 1, borderColor: '#D32F2F', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 'auto' },
   logoutButtonText: { color: '#D32F2F', fontWeight: '600' },
 });

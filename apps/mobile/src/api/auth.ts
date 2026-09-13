@@ -32,3 +32,7 @@ export function forgotPassword(email: string) {
 export function resetPassword(token: string, newPassword: string) {
   return apiRequest<{ message: string }>('/auth/reset-password', { method: 'POST', body: { token, newPassword }, auth: false });
 }
+
+export function becomeSeller(userId: string) {
+  return apiRequest<AuthUser>(`/users/${userId}/become-seller`, { method: 'PATCH' });
+}

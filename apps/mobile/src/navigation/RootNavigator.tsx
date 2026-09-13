@@ -12,6 +12,7 @@ import ListingDetailScreen from '../screens/ListingDetailScreen';
 import CreateListingScreen from '../screens/CreateListingScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import SellerOnboardingScreen from '../screens/SellerOnboardingScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -49,6 +50,7 @@ function AppStack() {
       <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ title: 'Checkout' }} />
       <Stack.Screen name="CreateListing" component={CreateListingScreen} options={{ title: 'Sell an Item' }} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
+      <Stack.Screen name="SellerOnboarding" component={SellerOnboardingScreen} options={{ title: 'Payout Setup' }} />
     </Stack.Navigator>
   );
 }
