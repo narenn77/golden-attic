@@ -143,9 +143,14 @@ export async function handleStripeWebhook(req: import('express').Request, res: i
       const paymentIntent = event.data.object as import('stripe').Stripe.PaymentIntent;
       const orderId = paymentIntent.metadata?.orderId;
       if (orderId) {
-        await prisma.order.update({
+        const order = await prisma.order.update({
           where: { id: orderId },
           data: { status: 'PAID', stripePaymentIntentId: paymentIntent.id },
+        });
+        // The listing only becomes unavailable once payment is actually confirmed.
+        await prisma.listing.update({
+          where: { id: order.listingId },
+          data: { status: 'SOLD', soldAt: new Date() },
         });
       }
       break;
@@ -154,12 +159,10 @@ export async function handleStripeWebhook(req: import('express').Request, res: i
       const paymentIntent = event.data.object as import('stripe').Stripe.PaymentIntent;
       const orderId = paymentIntent.metadata?.orderId;
       if (orderId) {
-        // Reopen the listing for sale since this attempt failed.
-        const order = await prisma.order.findUnique({ where: { id: orderId } });
-        if (order) {
-          await prisma.order.update({ where: { id: orderId }, data: { status: 'CANCELLED' } });
-          await prisma.listing.update({ where: { id: order.listingId }, data: { status: 'ACTIVE', soldAt: null } });
-        }
+        // Listing was never flipped to SOLD for this order (that only happens
+        // on confirmed payment), so there's nothing to reopen - just mark the
+        // failed attempt as cancelled.
+        await prisma.order.update({ where: { id: orderId }, data: { status: 'CANCELLED' } });
       }
       break;
     }

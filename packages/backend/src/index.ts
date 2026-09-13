@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import 'dotenv/config';
 
 import { listingsRouter } from './routes/listings.js';
@@ -13,6 +14,16 @@ import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
 
+// When deployed behind a reverse proxy/load balancer (Render, Heroku, an ALB,
+// etc.), Express needs to know to trust the X-Forwarded-For header - otherwise
+// every request appears to come from the proxy's IP, and IP-based rate
+// limiting (see auth.ts) would apply to all users collectively instead of
+// per-client. Only enable this when actually behind a trusted proxy.
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+
+app.use(helmet());
 app.use(cors());
 
 // The Stripe webhook needs the exact raw request bytes to verify the

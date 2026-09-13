@@ -80,7 +80,7 @@ model Listing {
   updatedAt         DateTime      @updatedAt
 
   bids              Bid[]
-  order             Order?
+  orders            Order[]
   hostingFees       HostingFee[]
 
   @@index([sellerId])
@@ -129,7 +129,7 @@ enum OrderStatus {
 
 model Order {
   id                   String      @id @default(uuid())
-  listingId            String      @unique
+  listingId            String
   listing              Listing     @relation(fields: [listingId], references: [id])
   buyerId              String
   buyer                User        @relation("BuyerOrders", fields: [buyerId], references: [id])
@@ -150,6 +150,7 @@ model Order {
 
   @@index([buyerId])
   @@index([sellerId])
+  @@index([listingId])
 }
 
 // ---------- Hosting fees (1%/month after first free month) ----------

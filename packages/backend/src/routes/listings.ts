@@ -2,18 +2,26 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { requireAuth } from '../middleware/requireAuth.js';
+import { optionalAuth } from '../middleware/optionalAuth.js';
 
 export const listingsRouter = Router();
 
-// GET /listings - browse active listings, with basic filtering
-listingsRouter.get('/', asyncHandler(async (req, res) => {
+// GET /listings - browse active listings, with basic filtering.
+// A non-ACTIVE status filter (DRAFT, REMOVED, etc.) is only honored when the
+// caller is asking about their own listings - otherwise a seller's
+// unpublished drafts or removed listings would be publicly browsable.
+listingsRouter.get('/', optionalAuth, asyncHandler(async (req, res) => {
   const { category, sellerId, status } = req.query;
+
+  const requestedStatus = status ? String(status) : 'ACTIVE';
+  const isOwnListings = !!sellerId && req.user?.userId === String(sellerId);
+  const effectiveStatus = requestedStatus === 'ACTIVE' || isOwnListings ? requestedStatus : 'ACTIVE';
 
   const listings = await prisma.listing.findMany({
     where: {
       ...(category ? { category: String(category) } : {}),
       ...(sellerId ? { sellerId: String(sellerId) } : {}),
-      status: status ? (String(status) as any) : 'ACTIVE',
+      status: effectiveStatus as any,
     },
     orderBy: { createdAt: 'desc' },
     include: { seller: { select: { id: true, name: true } } },
@@ -23,7 +31,7 @@ listingsRouter.get('/', asyncHandler(async (req, res) => {
 }));
 
 // GET /listings/:id
-listingsRouter.get('/:id', asyncHandler(async (req, res) => {
+listingsRouter.get('/:id', optionalAuth, asyncHandler(async (req, res) => {
   const listing = await prisma.listing.findUnique({
     where: { id: String(req.params.id) },
     include: {
@@ -33,7 +41,17 @@ listingsRouter.get('/:id', asyncHandler(async (req, res) => {
   });
 
   if (!listing) return res.status(404).json({ error: { message: 'Listing not found' } });
-  res.json(listing);
+
+  // Bid amounts and bidder identity are not public: the seller sees every
+  // bid on their own listing, a bidder sees only their own bid, and anyone
+  // else (including anonymous visitors) sees none.
+  const userId = req.user?.userId;
+  const visibleBids =
+    userId && userId === listing.sellerId
+      ? listing.bids
+      : listing.bids.filter((bid) => bid.bidderId === userId);
+
+  res.json({ ...listing, bids: visibleBids });
 }));
 
 // POST /listings - create a new listing (draft). Seller is taken from the
@@ -95,7 +113,11 @@ listingsRouter.patch('/:id', requireAuth, asyncHandler(async (req, res) => {
     return res.status(403).json({ error: { message: 'Not your listing' } });
   }
 
-  const { title, description, category, price, images, allowBidding, status } = req.body;
+  const { title, description, category, price, images, allowBidding } = req.body;
+  // NOTE: status is intentionally not editable here - it only transitions via
+  // /publish (DRAFT -> ACTIVE, which also sets up the free-hosting-month
+  // fields) and DELETE (-> REMOVED). Allowing it here would let a seller skip
+  // that setup or reactivate a listing that already sold.
 
   const listing = await prisma.listing.update({
     where: { id: String(req.params.id) },
@@ -106,7 +128,6 @@ listingsRouter.patch('/:id', requireAuth, asyncHandler(async (req, res) => {
       ...(price !== undefined ? { price } : {}),
       ...(images !== undefined ? { images } : {}),
       ...(allowBidding !== undefined ? { allowBidding } : {}),
-      ...(status !== undefined ? { status } : {}),
     },
   });
 

@@ -7,13 +7,13 @@ export const usersRouter = Router();
 
 // Account creation now happens via POST /auth/signup, which sets a password.
 
-// GET /users/:id
+// GET /users/:id - public profile only. Email and phone are private and are
+// only ever returned to the account owner via GET /auth/me.
 usersRouter.get('/:id', asyncHandler(async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: String(req.params.id) },
     select: {
-      id: true, email: true, name: true, phone: true,
-      isSeller: true, createdAt: true,
+      id: true, name: true, isSeller: true, createdAt: true,
     },
   });
 
@@ -30,6 +30,9 @@ usersRouter.patch('/:id/become-seller', requireAuth, asyncHandler(async (req, re
   const user = await prisma.user.update({
     where: { id: String(req.params.id) },
     data: { isSeller: true },
+    // Never return the raw record here - it carries the password hash and
+    // verification/reset token hashes, which must never reach a client.
+    select: { id: true, email: true, name: true, phone: true, isSeller: true, emailVerified: true, createdAt: true },
   });
 
   res.json(user);

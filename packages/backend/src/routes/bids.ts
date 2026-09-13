@@ -12,9 +12,15 @@ bidsRouter.post('/', requireAuth, asyncHandler(async (req, res) => {
   if (!listingId || amount == null) {
     return res.status(400).json({ error: { message: 'Missing required bid fields' } });
   }
+  if (typeof amount !== 'number' || !(amount > 0)) {
+    return res.status(400).json({ error: { message: 'Bid amount must be a positive number' } });
+  }
 
   const listing = await prisma.listing.findUnique({ where: { id: listingId } });
   if (!listing) return res.status(404).json({ error: { message: 'Listing not found' } });
+  if (listing.sellerId === req.user!.userId) {
+    return res.status(400).json({ error: { message: 'You cannot bid on your own listing' } });
+  }
   if (!listing.allowBidding) return res.status(400).json({ error: { message: 'Bidding is not enabled for this listing' } });
   if (listing.status !== 'ACTIVE') return res.status(400).json({ error: { message: 'Listing is not active' } });
 
@@ -28,14 +34,17 @@ bidsRouter.post('/', requireAuth, asyncHandler(async (req, res) => {
 // POST /bids/:id/counter - only the listing's seller can counter a bid
 bidsRouter.post('/:id/counter', requireAuth, asyncHandler(async (req, res) => {
   const { counterAmount } = req.body;
-  if (counterAmount == null) {
-    return res.status(400).json({ error: { message: 'counterAmount is required' } });
+  if (typeof counterAmount !== 'number' || !(counterAmount > 0)) {
+    return res.status(400).json({ error: { message: 'counterAmount must be a positive number' } });
   }
 
   const existing = await prisma.bid.findUnique({ where: { id: String(req.params.id) }, include: { listing: true } });
   if (!existing) return res.status(404).json({ error: { message: 'Bid not found' } });
   if (existing.listing.sellerId !== req.user!.userId) {
     return res.status(403).json({ error: { message: 'Only the listing seller can counter this bid' } });
+  }
+  if (existing.status !== 'PENDING') {
+    return res.status(400).json({ error: { message: `Cannot counter a bid with status ${existing.status}` } });
   }
 
   const bid = await prisma.bid.update({
@@ -52,6 +61,12 @@ bidsRouter.post('/:id/accept', requireAuth, asyncHandler(async (req, res) => {
   if (!existing) return res.status(404).json({ error: { message: 'Bid not found' } });
   const isParty = existing.bidderId === req.user!.userId || existing.listing.sellerId === req.user!.userId;
   if (!isParty) return res.status(403).json({ error: { message: 'Not a party to this bid' } });
+  if (existing.status !== 'PENDING' && existing.status !== 'COUNTERED') {
+    return res.status(400).json({ error: { message: `Cannot accept a bid with status ${existing.status}` } });
+  }
+  if (existing.listing.status !== 'ACTIVE') {
+    return res.status(400).json({ error: { message: 'This listing is no longer available' } });
+  }
 
   const bid = await prisma.bid.update({
     where: { id: String(req.params.id) },
@@ -67,6 +82,9 @@ bidsRouter.post('/:id/reject', requireAuth, asyncHandler(async (req, res) => {
   if (!existing) return res.status(404).json({ error: { message: 'Bid not found' } });
   const isParty = existing.bidderId === req.user!.userId || existing.listing.sellerId === req.user!.userId;
   if (!isParty) return res.status(403).json({ error: { message: 'Not a party to this bid' } });
+  if (existing.status !== 'PENDING' && existing.status !== 'COUNTERED') {
+    return res.status(400).json({ error: { message: `Cannot reject a bid with status ${existing.status}` } });
+  }
 
   const bid = await prisma.bid.update({
     where: { id: String(req.params.id) },
@@ -76,15 +94,32 @@ bidsRouter.post('/:id/reject', requireAuth, asyncHandler(async (req, res) => {
   res.json(bid);
 }));
 
-// GET /bids?listingId=... - list bids for a listing
-bidsRouter.get('/', asyncHandler(async (req, res) => {
+// GET /bids?listingId=... - list bids for a listing, or the caller's own bid history.
+// Visibility: the listing's seller sees every bid on it; anyone else only
+// ever sees their own bids - bid amounts and bidder identity are not public.
+bidsRouter.get('/', requireAuth, asyncHandler(async (req, res) => {
   const { listingId, bidderId } = req.query;
+  const userId = req.user!.userId;
+
+  if (bidderId && String(bidderId) !== userId) {
+    return res.status(403).json({ error: { message: "Cannot view another user's bid history" } });
+  }
+
+  let where: any = {};
+
+  if (listingId) {
+    const listing = await prisma.listing.findUnique({ where: { id: String(listingId) } });
+    if (!listing) return res.status(404).json({ error: { message: 'Listing not found' } });
+
+    where = listing.sellerId === userId
+      ? { listingId: String(listingId) }
+      : { listingId: String(listingId), bidderId: userId };
+  } else {
+    where = { bidderId: userId };
+  }
 
   const bids = await prisma.bid.findMany({
-    where: {
-      ...(listingId ? { listingId: String(listingId) } : {}),
-      ...(bidderId ? { bidderId: String(bidderId) } : {}),
-    },
+    where,
     orderBy: { createdAt: 'desc' },
   });
 
