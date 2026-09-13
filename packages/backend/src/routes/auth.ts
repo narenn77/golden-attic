@@ -21,11 +21,17 @@ function isValidEmail(email: string) {
 // TODO: set APP_URL once the web/mobile deep-link scheme is decided.
 const APP_URL = process.env.APP_URL || 'http://localhost:3000';
 
+// Rate limits are disabled (effectively) in the test environment so the test
+// suite can exercise many auth attempts in quick succession without tripping
+// the same brute-force protection a real attacker would hit. Rate limiting
+// itself is covered by a dedicated test using its own isolated app/limiter.
+const IS_TEST = process.env.NODE_ENV === 'test';
+
 // Brute-force protection: 10 attempts per 15 minutes per IP on login,
 // 5 signups per hour per IP (signup is cheap to abuse for spam accounts).
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,
+  limit: IS_TEST ? 100000 : 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: 'Too many login attempts. Please try again later.' } },
@@ -33,7 +39,7 @@ const loginLimiter = rateLimit({
 
 const signupLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 5,
+  limit: IS_TEST ? 100000 : 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: 'Too many accounts created from this address. Please try again later.' } },
@@ -43,7 +49,7 @@ const signupLimiter = rateLimit({
 // password reset request) - these are the classic email-bombing vectors.
 const emailActionLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 3,
+  limit: IS_TEST ? 100000 : 3,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: 'Too many requests. Please try again later.' } },

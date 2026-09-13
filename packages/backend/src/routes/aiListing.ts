@@ -8,9 +8,10 @@ import { LISTING_CATEGORIES } from '@golden-attic/shared';
 export const aiListingRouter = Router();
 
 // AI calls cost real money per request - cap how often one user can draft.
+// (Disabled in the test environment - see auth.ts for the same pattern.)
 const aiDraftLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  limit: 30,
+  limit: process.env.NODE_ENV === 'test' ? 100000 : 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: { message: 'Too many AI drafting requests this hour. Please try again later.' } },
