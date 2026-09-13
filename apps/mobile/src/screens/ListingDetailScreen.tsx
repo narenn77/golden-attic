@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { fetchListing, deleteListing, pauseListing, resumeListing, daysUntilFreeHostingEnds } from '../api/listings';
 import { startConversation } from '../api/conversations';
+import { fetchUserRatings } from '../api/ratings';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import LikeButton from '../components/LikeButton';
+import RatingStars from '../components/RatingStars';
 
 export default function ListingDetailScreen({ route, navigation }: any) {
   const { id } = route.params;
@@ -17,10 +19,16 @@ export default function ListingDetailScreen({ route, navigation }: any) {
   const [deleting, setDeleting] = useState(false);
   const [pausingOrResuming, setPausingOrResuming] = useState(false);
   const [messaging, setMessaging] = useState(false);
+  const [sellerRating, setSellerRating] = useState<{ average: number | null; count: number } | null>(null);
 
   useEffect(() => {
     fetchListing(id)
-      .then(setListing)
+      .then((data) => {
+        setListing(data);
+        fetchUserRatings(data.sellerId)
+          .then((r) => setSellerRating({ average: r.average, count: r.count }))
+          .catch(() => {});
+      })
       .catch(() => Alert.alert('Error', 'Could not load this listing.'))
       .finally(() => setLoading(false));
   }, [id]);
@@ -156,7 +164,17 @@ export default function ListingDetailScreen({ route, navigation }: any) {
         <Text style={styles.price}>${Number(listing.price).toFixed(2)}</Text>
         <Text style={styles.description}>{listing.description}</Text>
 
-        {listing.seller && <Text style={styles.seller}>Sold by {listing.seller.name}</Text>}
+        {listing.seller && (
+          <View style={styles.sellerRow}>
+            <Text style={styles.seller}>Sold by {listing.seller.name}</Text>
+            {sellerRating && sellerRating.count > 0 && (
+              <View style={styles.sellerRatingRow}>
+                <RatingStars value={Math.round(sellerRating.average || 0)} readOnly size="sm" />
+                <Text style={styles.sellerRatingCount}>({sellerRating.count})</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {!isOwner && !user && listing.status === 'ACTIVE' && (
           <View style={styles.loginPrompt}>
@@ -252,7 +270,10 @@ const styles = StyleSheet.create({
   category: { fontSize: 14, color: '#888', marginBottom: 8 },
   price: { fontSize: 24, fontWeight: '700', color: '#B8860B', marginBottom: 16 },
   description: { fontSize: 15, lineHeight: 22, color: '#333', marginBottom: 16 },
-  seller: { fontSize: 13, color: '#666', marginBottom: 16 },
+  seller: { fontSize: 13, color: '#666' },
+  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
+  sellerRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  sellerRatingCount: { fontSize: 11, color: '#999' },
   loginPrompt: { backgroundColor: '#FAFAFA', borderWidth: 1, borderColor: '#eee', borderRadius: 8, padding: 16, alignItems: 'center' },
   loginPromptText: { color: '#444', marginBottom: 12, textAlign: 'center' },
   loginButton: { backgroundColor: '#B8860B', borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24 },

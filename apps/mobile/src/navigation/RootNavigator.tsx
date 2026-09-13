@@ -16,6 +16,7 @@ import SellerOnboardingScreen from '../screens/SellerOnboardingScreen';
 import MyListingsScreen from '../screens/MyListingsScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import ConversationScreen from '../screens/ConversationScreen';
+import OrdersScreen from '../screens/OrdersScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -65,6 +66,7 @@ export default function RootNavigator() {
         <Stack.Screen name="MyListings" component={MyListingsScreen} options={{ title: 'My Listings' }} />
         <Stack.Screen name="Messages" component={MessagesScreen} options={{ title: 'Messages' }} />
         <Stack.Screen name="Conversation" component={ConversationScreen} options={{ title: 'Conversation' }} />
+        <Stack.Screen name="Orders" component={OrdersScreen} options={{ title: 'My Orders' }} />
         <Stack.Screen name="SellerOnboarding" component={SellerOnboardingScreen} options={{ title: 'Payout Setup' }} />
         <Stack.Screen name="Login" component={LoginScreen} options={{ title: 'Log In', headerShown: false }} />
         <Stack.Screen name="Signup" component={SignupScreen} options={{ title: 'Sign Up', headerShown: false }} />

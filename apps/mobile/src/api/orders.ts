@@ -13,6 +13,9 @@ export interface Order {
   shippingCity: string | null;
   status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';
   createdAt: string;
+  listing?: { id: string; title: string; images: string[] };
+  buyer?: { id: string; name: string };
+  seller?: { id: string; name: string };
 }
 
 export interface ShippingQuote {

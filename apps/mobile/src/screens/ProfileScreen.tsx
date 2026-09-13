@@ -91,6 +91,9 @@ export default function ProfileScreen({ navigation }: any) {
         <TouchableOpacity style={styles.payoutButton} onPress={() => navigation.navigate('Messages')}>
           <Text style={styles.payoutButtonText}>Messages</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.payoutButton} onPress={() => navigation.navigate('Orders')}>
+          <Text style={styles.payoutButtonText}>My Orders</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.payoutButton} onPress={() => navigation.navigate('SellerOnboarding')}>
           <Text style={styles.payoutButtonText}>
             {user?.isSeller ? 'Manage payout settings' : 'Set up payouts'}
