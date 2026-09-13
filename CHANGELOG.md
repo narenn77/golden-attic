@@ -11,6 +11,29 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.15.0] - 2026-09-13
+### Added
+- Listing pause/resume: sellers can hide a listing from browsing without
+  deleting it (paused listings are meant to auto-remove after a 30-day
+  grace period if never resumed - the endpoint logic exists, the actual
+  scheduled trigger for that still needs a cron job set up)
+- Likes/saves: buyers can like/save listings (sellers can't like their own),
+  a saved-items list, like counts, and a "most liked" sort
+- Multi-select filters: category and country now accept comma-separated
+  values on the backend
+- Web: filter sidebar redesign (left-side accordion, multi-select
+  checkboxes for category/country, sort moved to its own dropdown)
+- Web + mobile: new "My Listings" view - every listing you own across all
+  statuses, with days-left-of-free-hosting shown only to the owner, plus
+  pause/resume/delete actions, linked from the nav for easy access
+- Auth-gated buy/bid: anonymous visitors see a clear "log in to buy or bid"
+  prompt on both platforms instead of controls that would silently fail
+### Fixed
+- Mobile previously forced login before a person could even browse
+  listings at all, contradicting the intended "browse without an account"
+  behavior that already worked correctly on web - the navigator is now a
+  single stack where only account-specific screens require login
+
 ## [v0.14.0] - 2026-09-13
 ### Added
 - Delete-listing UI on both web and mobile listing detail pages (owner
