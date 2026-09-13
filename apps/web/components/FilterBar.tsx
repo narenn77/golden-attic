@@ -52,7 +52,7 @@ export default function FilterBar({ options }: { options: ListingFilterOptions }
     }
   }
 
-  const selectClass = 'border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white';
+  const selectClass = 'border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white text-neutral-900 [color-scheme:light]';
 
   return (
     <div className="flex flex-wrap gap-3 mb-6">
