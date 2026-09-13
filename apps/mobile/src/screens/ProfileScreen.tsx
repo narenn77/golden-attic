@@ -5,7 +5,7 @@ import * as authApi from '../api/auth';
 import { ApiError } from '../api/client';
 
 export default function ProfileScreen({ navigation }: any) {
-  const { user, logout, refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [resendMessage, setResendMessage] = useState('');
 
@@ -117,10 +117,6 @@ export default function ProfileScreen({ navigation }: any) {
           {savingAddress ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveAddressButtonText}>Save address</Text>}
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-        <Text style={styles.logoutButtonText}>Log Out</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -146,6 +142,4 @@ const styles = StyleSheet.create({
   rowInputSmall: { flex: 1 },
   saveAddressButton: { backgroundColor: '#B8860B', borderRadius: 8, padding: 12, alignItems: 'center', marginTop: 4 },
   saveAddressButtonText: { color: '#fff', fontWeight: '600' },
-  logoutButton: { borderWidth: 1, borderColor: '#D32F2F', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 12 },
-  logoutButtonText: { color: '#D32F2F', fontWeight: '600' },
 });

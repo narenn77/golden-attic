@@ -1,11 +1,18 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/AuthContext';
 import Logo from './Logo';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const router = useRouter();
+
+  function handleLogout() {
+    logout();
+    router.push('/');
+  }
 
   return (
     <header className="border-b border-neutral-200 bg-white sticky top-0 z-10">
@@ -19,24 +26,40 @@ export default function Navbar() {
         <nav className="flex items-center gap-4">
           {user ? (
             <>
-              <Link href="/my-listings" className="text-sm font-medium text-neutral-700 hover:underline">
-                My Listings
-              </Link>
-              <Link href="/orders" className="text-sm font-medium text-neutral-700 hover:underline">
-                Orders
-              </Link>
-              <Link href="/messages" className="text-sm font-medium text-neutral-700 hover:underline">
-                Messages
-              </Link>
               <Link href="/sell" className="text-sm font-medium text-amber-700 hover:underline">
                 Sell an item
               </Link>
-              <Link href="/profile" className="text-sm font-medium text-neutral-700 hover:underline">
-                {user.name}
-              </Link>
-              <button onClick={logout} className="text-sm text-neutral-500 hover:underline">
-                Log out
-              </button>
+
+              {/* Native <details>/<summary> gives a click-to-open dropdown for
+                  free, no extra JS state needed - same pattern as the filter
+                  sidebar accordions. Keeps the top-level nav from growing
+                  every time a new account page gets added. */}
+              <details className="relative">
+                <summary className="text-sm font-medium text-neutral-700 cursor-pointer list-none flex items-center gap-1">
+                  {user.name}
+                  <span className="text-neutral-400 text-xs">▾</span>
+                </summary>
+                <div className="absolute right-0 mt-2 w-44 bg-white border border-neutral-200 rounded-md shadow-lg py-1 z-20">
+                  <Link href="/profile" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
+                    Profile
+                  </Link>
+                  <Link href="/my-listings" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
+                    My Listings
+                  </Link>
+                  <Link href="/orders" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
+                    Orders
+                  </Link>
+                  <Link href="/messages" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
+                    Messages
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 border-t border-neutral-100"
+                  >
+                    Log out
+                  </button>
+                </div>
+              </details>
             </>
           ) : (
             <>

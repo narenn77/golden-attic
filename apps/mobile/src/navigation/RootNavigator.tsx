@@ -27,7 +27,7 @@ const Stack = createNativeStackNavigator();
 // each of those screens also shows its own "please log in" fallback as a
 // second line of defense.
 export default function RootNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
 
   if (loading) {
     return (
@@ -62,7 +62,18 @@ export default function RootNavigator() {
         <Stack.Screen name="ListingDetail" component={ListingDetailScreen} options={{ title: 'Item' }} />
         <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ title: 'Checkout' }} />
         <Stack.Screen name="CreateListing" component={CreateListingScreen} options={{ title: 'Sell an Item' }} />
-        <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{
+            title: 'Profile',
+            headerRight: () => (
+              <TouchableOpacity onPress={logout}>
+                <Text style={styles.logoutHeaderLink}>Log Out</Text>
+              </TouchableOpacity>
+            ),
+          }}
+        />
         <Stack.Screen name="MyListings" component={MyListingsScreen} options={{ title: 'My Listings' }} />
         <Stack.Screen name="Messages" component={MessagesScreen} options={{ title: 'Messages' }} />
         <Stack.Screen name="Conversation" component={ConversationScreen} options={{ title: 'Conversation' }} />
@@ -79,4 +90,5 @@ export default function RootNavigator() {
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   headerLink: { color: '#B8860B', fontSize: 15, fontWeight: '600', paddingHorizontal: 8 },
+  logoutHeaderLink: { color: '#D32F2F', fontSize: 15, fontWeight: '600', paddingHorizontal: 8 },
 });
