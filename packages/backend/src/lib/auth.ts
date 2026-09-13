@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { randomBytes, createHash } from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = '30d';
@@ -30,4 +31,18 @@ export function signToken(payload: AuthTokenPayload): string {
 
 export function verifyToken(token: string): AuthTokenPayload {
   return jwt.verify(token, JWT_SECRET || 'dev-only-insecure-secret') as AuthTokenPayload;
+}
+
+// Generates a URL-safe random token for email verification / password reset links.
+// Returns both the raw token (sent to the user, never stored) and a SHA-256 hash
+// of it (stored in the DB) - so a leaked database never exposes usable tokens,
+// while still letting us look a token up deterministically when it comes back.
+export function generateSecureToken(): { raw: string; hash: string } {
+  const raw = randomBytes(32).toString('hex');
+  const hash = createHash('sha256').update(raw).digest('hex');
+  return { raw, hash };
+}
+
+export function hashSecureToken(raw: string): string {
+  return createHash('sha256').update(raw).digest('hex');
 }

@@ -18,6 +18,15 @@ model User {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
+  // Email verification
+  emailVerified             Boolean   @default(false)
+  emailVerificationToken     String?   @unique
+  emailVerificationExpires   DateTime?
+
+  // Password reset
+  passwordResetToken         String?   @unique
+  passwordResetExpires       DateTime?
+
   // Seller-related
   isSeller              Boolean  @default(false)
   stripeConnectAccountId String? @unique  // for receiving payouts as a seller
