@@ -18,7 +18,18 @@ usersRouter.get('/:id', asyncHandler(async (req, res) => {
   });
 
   if (!user) return res.status(404).json({ error: { message: 'User not found' } });
-  res.json(user);
+
+  const ratingAggregate = await prisma.rating.aggregate({
+    where: { ratedUserId: user.id },
+    _avg: { score: true },
+    _count: true,
+  });
+
+  res.json({
+    ...user,
+    ratingAverage: ratingAggregate._avg.score ?? null,
+    ratingCount: ratingAggregate._count,
+  });
 }));
 
 // PATCH /users/:id/become-seller - flips a buyer into a seller (self only)
