@@ -11,6 +11,15 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.19.1] - 2026-09-13
+### Fixed
+- Logout was hard to find on both platforms - not missing, just crowded
+  out as more nav items/screens were added over recent releases:
+  - Web: navbar had grown to 6 crammed items; replaced with a user
+    dropdown menu (Profile, My Listings, Orders, Messages, Log out)
+  - Mobile: "Log Out" had drifted to the bottom of an increasingly long
+    Profile screen; moved to the screen header, always visible
+
 ## [v0.19.0] - 2026-09-13
 ### Added
 - `POST /admin/maintenance`: emails sellers whose listings have 3 or fewer
