@@ -11,6 +11,11 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.15.1] - 2026-09-13
+### Added
+- Branding: SVG logo (attic roofline + gold coin) and "Turn your attic
+  into gold" tagline, on both web and mobile
+
 ## [v0.15.0] - 2026-09-13
 ### Added
 - Listing pause/resume: sellers can hide a listing from browsing without
