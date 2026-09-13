@@ -22,6 +22,9 @@ export default function Navbar() {
               <Link href="/my-listings" className="text-sm font-medium text-neutral-700 hover:underline">
                 My Listings
               </Link>
+              <Link href="/orders" className="text-sm font-medium text-neutral-700 hover:underline">
+                Orders
+              </Link>
               <Link href="/messages" className="text-sm font-medium text-neutral-700 hover:underline">
                 Messages
               </Link>

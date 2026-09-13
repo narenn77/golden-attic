@@ -171,6 +171,11 @@ ordersRouter.get('/', requireAuth, asyncHandler(async (req, res) => {
   const orders = await prisma.order.findMany({
     where,
     orderBy: { createdAt: 'desc' },
+    include: {
+      listing: { select: { id: true, title: true, images: true } },
+      buyer: { select: { id: true, name: true } },
+      seller: { select: { id: true, name: true } },
+    },
   });
 
   res.json(orders);

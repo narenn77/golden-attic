@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/AuthContext';
 import { apiRequest, ApiError } from '../../../lib/client';
 import { deleteListing, pauseListing, resumeListing, daysUntilFreeHostingEnds, type Listing } from '../../../lib/listings';
 import { startConversation } from '../../../lib/conversations';
+import { fetchUserRatings } from '../../../lib/ratings';
 import LikeButton from '../../../components/LikeButton';
+import RatingStars from '../../../components/RatingStars';
 
 export default function ListingDetailClient({ listing }: { listing: Listing & { bids: any[] } }) {
   const { user } = useAuth();
@@ -22,8 +24,15 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
   const [status, setStatus] = useState(listing.status);
   const [messaging, setMessaging] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
+  const [sellerRating, setSellerRating] = useState<{ average: number | null; count: number } | null>(null);
 
   const isOwner = user?.id === listing.sellerId;
+
+  useEffect(() => {
+    fetchUserRatings(listing.sellerId)
+      .then((r) => setSellerRating({ average: r.average, count: r.count }))
+      .catch(() => {});
+  }, [listing.sellerId]);
 
   async function handleMessageSeller() {
     setMessaging(true);
@@ -147,7 +156,17 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
       <p className="text-3xl font-bold text-amber-700 mb-4">${Number(listing.price).toFixed(2)}</p>
       <p className="text-neutral-700 leading-relaxed mb-6">{listing.description}</p>
 
-      {listing.seller && <p className="text-sm text-neutral-500 mb-6">Sold by {listing.seller.name}</p>}
+      {listing.seller && (
+        <div className="flex items-center gap-2 mb-6">
+          <p className="text-sm text-neutral-500">Sold by {listing.seller.name}</p>
+          {sellerRating && sellerRating.count > 0 && (
+            <div className="flex items-center gap-1">
+              <RatingStars value={Math.round(sellerRating.average || 0)} readOnly size="sm" />
+              <span className="text-xs text-neutral-400">({sellerRating.count})</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {isOwner && (
         <div className="space-y-3">

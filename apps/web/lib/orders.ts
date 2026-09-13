@@ -13,6 +13,9 @@ export interface Order {
   shippingCity: string | null;
   status: 'PENDING_PAYMENT' | 'PAID' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';
   createdAt: string;
+  listing?: { id: string; title: string; images: string[] };
+  buyer?: { id: string; name: string };
+  seller?: { id: string; name: string };
 }
 
 export interface ShippingQuote {
@@ -34,6 +37,11 @@ export function createOrder(input: { listingId: string; localPickup?: boolean })
 
 export function fetchOrder(id: string) {
   return apiRequest<Order>(`/orders/${id}`);
+}
+
+export function fetchMyOrders(role?: 'buyer' | 'seller') {
+  const qs = role ? `?role=${role}` : '';
+  return apiRequest<Order[]>(`/orders${qs}`);
 }
 
 export function completeOrder(id: string) {
