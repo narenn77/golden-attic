@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/AuthContext';
 import { apiRequest, ApiError } from '../../../lib/client';
 import { deleteListing, pauseListing, resumeListing, daysUntilFreeHostingEnds, type Listing } from '../../../lib/listings';
+import { startConversation } from '../../../lib/conversations';
 import LikeButton from '../../../components/LikeButton';
 
 export default function ListingDetailClient({ listing }: { listing: Listing & { bids: any[] } }) {
@@ -19,8 +20,22 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
   const [pausingOrResuming, setPausingOrResuming] = useState(false);
   const [ownerActionError, setOwnerActionError] = useState<string | null>(null);
   const [status, setStatus] = useState(listing.status);
+  const [messaging, setMessaging] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
 
   const isOwner = user?.id === listing.sellerId;
+
+  async function handleMessageSeller() {
+    setMessaging(true);
+    setMessageError(null);
+    try {
+      const conversation = await startConversation(listing.id);
+      router.push(`/messages/${conversation.id}`);
+    } catch (err) {
+      setMessageError(err instanceof ApiError ? err.message : 'Could not start a conversation.');
+      setMessaging(false);
+    }
+  }
 
   async function placeBid(e: React.FormEvent) {
     e.preventDefault();
@@ -197,6 +212,15 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
           >
             Buy Now — ${Number(listing.price).toFixed(2)}
           </button>
+
+          <button
+            onClick={handleMessageSeller}
+            disabled={messaging}
+            className="w-full border border-neutral-300 text-neutral-700 rounded-md py-3 font-semibold hover:bg-neutral-50 disabled:opacity-60"
+          >
+            {messaging ? 'Opening...' : 'Message seller'}
+          </button>
+          {messageError && <p className="text-red-600 text-sm">{messageError}</p>}
 
           {listing.allowBidding && (
             <div className="border-t border-neutral-200 pt-6">
