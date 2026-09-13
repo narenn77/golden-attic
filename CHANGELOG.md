@@ -11,6 +11,15 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.16.0] - 2026-09-13
+### Added
+- Chat/messaging between buyers and sellers, on both web and mobile: a
+  conversation per (listing, buyer) pair, message threads with polling for
+  near-real-time updates, unread counts, and a "Message seller" button on
+  every listing
+- Messages are filtered for phone-number-like patterns and rejected -
+  keeps contact information on-platform
+
 ## [v0.15.1] - 2026-09-13
 ### Added
 - Branding: SVG logo (attic roofline + gold coin) and "Turn your attic
