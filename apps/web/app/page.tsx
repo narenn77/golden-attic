@@ -1,6 +1,6 @@
 import { fetchListings, fetchListingFilterOptions, type ListingSort } from '../lib/listings';
 import ListingCard from '../components/ListingCard';
-import FilterSidebar from '../components/FilterSidebar';
+import FilterPanel from '../components/FilterPanel';
 import SortDropdown from '../components/SortDropdown';
 
 export const dynamic = 'force-dynamic'; // listings and filters change often, avoid stale static caching
@@ -51,7 +51,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       )}
 
       <div className="flex flex-col md:flex-row gap-6">
-        {filterOptions && <FilterSidebar options={filterOptions} />}
+        {filterOptions && <FilterPanel options={filterOptions} />}
 
         <div className="flex-1 min-w-0">
           <div className="flex justify-end mb-4">

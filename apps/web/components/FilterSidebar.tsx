@@ -23,6 +23,21 @@ function FilterSection({ title, children, defaultOpen = true }: { title: string;
   );
 }
 
+// A "clear this facet" row shown at the top of every section - always
+// present regardless of how many actual values there are, so every filter
+// has a consistent, obvious way back to "no restriction on this facet."
+function AllOption({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`block text-sm text-left ${active ? 'font-semibold text-amber-700' : 'text-neutral-500 hover:text-neutral-800'}`}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function FilterSidebar({ options }: { options: ListingFilterOptions }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -46,6 +61,12 @@ export default function FilterSidebar({ options }: { options: ListingFilterOptio
       ? currentlySelected.filter((v) => v !== value)
       : [...currentlySelected, value];
     if (next.length > 0) params.set(key, next.join(',')); else params.delete(key);
+    navigate(params);
+  }
+
+  function clearFacet(key: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete(key);
     navigate(params);
   }
 
@@ -81,7 +102,7 @@ export default function FilterSidebar({ options }: { options: ListingFilterOptio
   const hasActiveFilters = searchParams.toString().length > 0;
 
   return (
-    <aside className="w-full md:w-56 shrink-0">
+    <div>
       <div className="flex items-center justify-between mb-2">
         <h2 className="font-semibold text-sm text-neutral-900">Filters</h2>
         {hasActiveFilters && (
@@ -92,6 +113,7 @@ export default function FilterSidebar({ options }: { options: ListingFilterOptio
       </div>
 
       <FilterSection title="Category">
+        <AllOption label="All categories" active={selectedCategories.length === 0} onClick={() => clearFacet('category')} />
         {options.categories.map((c) => (
           <label key={c} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
             <input
@@ -105,69 +127,66 @@ export default function FilterSidebar({ options }: { options: ListingFilterOptio
         ))}
       </FilterSection>
 
-      {options.countries.length > 0 && (
-        <FilterSection title="Country">
-          {options.countries.map((c) => (
-            <label key={c} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selectedCountries.includes(c)}
-                onChange={() => toggleMultiValue('country', c, selectedCountries)}
-                className="accent-amber-700 [color-scheme:light]"
-              />
-              {c}
-            </label>
-          ))}
-        </FilterSection>
-      )}
-
-      {decades.length > 0 && (
-        <FilterSection title="Decade" defaultOpen={false}>
-          <label className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
-            <input type="radio" name="decade" checked={!selectedDecade} onChange={() => setSingleValue(['decade'], '')} className="accent-amber-700 [color-scheme:light]" />
-            All decades
+      <FilterSection title="Country">
+        <AllOption label="All countries" active={selectedCountries.length === 0} onClick={() => clearFacet('country')} />
+        {options.countries.map((c) => (
+          <label key={c} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={selectedCountries.includes(c)}
+              onChange={() => toggleMultiValue('country', c, selectedCountries)}
+              className="accent-amber-700 [color-scheme:light]"
+            />
+            {c}
           </label>
-          {decades.map((d) => (
-            <label key={d} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
-              <input
-                type="radio"
-                name="decade"
-                checked={selectedDecade === String(d)}
-                onChange={() => setSingleValue(['decade'], String(d))}
-                className="accent-amber-700 [color-scheme:light]"
-              />
-              {decadeLabel(d)}
-            </label>
-          ))}
-        </FilterSection>
-      )}
+        ))}
+        {options.countries.length === 0 && (
+          <p className="text-xs text-neutral-400">No countries listed yet.</p>
+        )}
+      </FilterSection>
 
-      {priceBands.length > 0 && (
-        <FilterSection title="Price" defaultOpen={false}>
-          <label className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
+      <FilterSection title="Decade" defaultOpen={false}>
+        <AllOption label="All decades" active={!selectedDecade} onClick={() => clearFacet('decade')} />
+        {decades.map((d) => (
+          <label key={d} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
+            <input
+              type="radio"
+              name="decade"
+              checked={selectedDecade === String(d)}
+              onChange={() => setSingleValue(['decade'], String(d))}
+              className="accent-amber-700 [color-scheme:light]"
+            />
+            {decadeLabel(d)}
+          </label>
+        ))}
+        {decades.length === 0 && <p className="text-xs text-neutral-400">No dated listings yet.</p>}
+      </FilterSection>
+
+      <FilterSection title="Price" defaultOpen={false}>
+        <AllOption
+          label="All prices"
+          active={!selectedPriceBand}
+          onClick={() => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete('minPrice');
+            params.delete('maxPrice');
+            navigate(params);
+          }}
+        />
+        {priceBands.map(({ min, max }) => (
+          <label key={min} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
             <input
               type="radio"
               name="priceBand"
-              checked={!selectedPriceBand}
-              onChange={() => setSingleValue(['minPrice', 'maxPrice'], '')}
+              checked={selectedPriceBand === `${min}-${max}`}
+              onChange={() => setSingleValue(['minPrice', 'maxPrice'], `${min}-${max}`)}
               className="accent-amber-700 [color-scheme:light]"
             />
-            All prices
+            {priceBandLabel(min, max)}
           </label>
-          {priceBands.map(({ min, max }) => (
-            <label key={min} className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
-              <input
-                type="radio"
-                name="priceBand"
-                checked={selectedPriceBand === `${min}-${max}`}
-                onChange={() => setSingleValue(['minPrice', 'maxPrice'], `${min}-${max}`)}
-                className="accent-amber-700 [color-scheme:light]"
-              />
-              {priceBandLabel(min, max)}
-            </label>
-          ))}
-        </FilterSection>
-      )}
-    </aside>
+        ))}
+        {priceBands.length === 0 && <p className="text-xs text-neutral-400">No listings yet.</p>}
+      </FilterSection>
+    </div>
   );
 }
