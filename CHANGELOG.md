@@ -11,6 +11,15 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.14.0] - 2026-09-13
+### Added
+- Delete-listing UI on both web and mobile listing detail pages (owner
+  only, with confirmation) - the backend endpoint existed with no UI
+  entry point anywhere
+- Multi-photo gallery on listing detail pages (thumbnail strip + tap to
+  switch main image) - previously only the first of up to 5 uploaded
+  photos was ever displayed
+
 ## [v0.13.1] - 2026-09-13
 ### Fixed
 - Filter dropdown text was invisible on systems/browsers in dark mode -
