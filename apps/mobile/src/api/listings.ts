@@ -44,6 +44,10 @@ export function publishListing(id: string) {
   return apiRequest<Listing>(`/listings/${id}/publish`, { method: 'POST' });
 }
 
+export function deleteListing(id: string) {
+  return apiRequest<void>(`/listings/${id}`, { method: 'DELETE' });
+}
+
 export interface AiListingDraft {
   title: string;
   description: string;

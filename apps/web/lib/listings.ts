@@ -72,6 +72,10 @@ export function createListing(input: {
   return apiRequest<Listing>('/listings', { method: 'POST', body: input });
 }
 
+export function deleteListing(id: string) {
+  return apiRequest<void>(`/listings/${id}`, { method: 'DELETE' });
+}
+
 export function publishListing(id: string) {
   return apiRequest<Listing>(`/listings/${id}/publish`, { method: 'POST' });
 }

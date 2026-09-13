@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Alert } from 'react-native';
-import { fetchListing } from '../api/listings';
+import { fetchListing, deleteListing } from '../api/listings';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
@@ -11,6 +11,8 @@ export default function ListingDetailScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [bidAmount, setBidAmount] = useState('');
   const [submittingBid, setSubmittingBid] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchListing(id)
@@ -37,6 +39,24 @@ export default function ListingDetailScreen({ route, navigation }: any) {
     }
   }
 
+  function confirmDelete() {
+    Alert.alert('Remove listing', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: handleDelete },
+    ]);
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await deleteListing(id);
+      navigation.navigate('Browse');
+    } catch (err: any) {
+      Alert.alert('Could not remove listing', err?.message || 'Something went wrong.');
+      setDeleting(false);
+    }
+  }
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -57,12 +77,25 @@ export default function ListingDetailScreen({ route, navigation }: any) {
 
   return (
     <ScrollView style={styles.container}>
-      {listing.images[0] ? (
-        <Image source={{ uri: listing.images[0] }} style={styles.image} />
+      {listing.images[activeImage] ? (
+        <Image source={{ uri: listing.images[activeImage] }} style={styles.image} />
       ) : (
         <View style={[styles.image, styles.imagePlaceholder]}>
           <Text style={{ color: '#999' }}>No photo</Text>
         </View>
+      )}
+
+      {listing.images.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbRow} contentContainerStyle={styles.thumbRowContent}>
+          {listing.images.map((src: string, i: number) => (
+            <TouchableOpacity key={i} onPress={() => setActiveImage(i)}>
+              <Image
+                source={{ uri: src }}
+                style={[styles.thumb, i === activeImage && styles.thumbActive]}
+              />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       )}
 
       <View style={styles.body}>
@@ -104,8 +137,17 @@ export default function ListingDetailScreen({ route, navigation }: any) {
         )}
 
         {isOwner && (
-          <View style={styles.ownerBanner}>
-            <Text style={styles.ownerBannerText}>This is your listing</Text>
+          <View>
+            <View style={styles.ownerBanner}>
+              <Text style={styles.ownerBannerText}>This is your listing</Text>
+            </View>
+            <TouchableOpacity style={styles.deleteButton} onPress={confirmDelete} disabled={deleting}>
+              {deleting ? (
+                <ActivityIndicator color="#D32F2F" />
+              ) : (
+                <Text style={styles.deleteButtonText}>Remove listing</Text>
+              )}
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -118,6 +160,10 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   image: { width: '100%', height: 300, backgroundColor: '#f2f2f2' },
   imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  thumbRow: { marginTop: 10 },
+  thumbRowContent: { paddingHorizontal: 20, gap: 8 },
+  thumb: { width: 60, height: 60, borderRadius: 8, marginRight: 8, borderWidth: 2, borderColor: 'transparent' },
+  thumbActive: { borderColor: '#B8860B' },
   body: { padding: 20 },
   title: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
   category: { fontSize: 14, color: '#888', marginBottom: 8 },
@@ -134,4 +180,6 @@ const styles = StyleSheet.create({
   bidButtonText: { color: '#fff', fontWeight: '600' },
   ownerBanner: { backgroundColor: '#FFF8E1', padding: 12, borderRadius: 8, marginTop: 12 },
   ownerBannerText: { color: '#8B6914', textAlign: 'center', fontWeight: '600' },
+  deleteButton: { borderWidth: 1, borderColor: '#D32F2F', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 12 },
+  deleteButtonText: { color: '#D32F2F', fontWeight: '600' },
 });
