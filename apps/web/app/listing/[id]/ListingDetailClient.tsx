@@ -7,16 +7,181 @@ import { apiRequest, ApiError } from '../../../lib/client';
 import { deleteListing, pauseListing, resumeListing, daysUntilFreeHostingEnds, type Listing } from '../../../lib/listings';
 import { startConversation } from '../../../lib/conversations';
 import { fetchUserRatings } from '../../../lib/ratings';
+import { counterBid, acceptBid, rejectBid, type Bid } from '../../../lib/bids';
 import LikeButton from '../../../components/LikeButton';
 import RatingStars from '../../../components/RatingStars';
 
-export default function ListingDetailClient({ listing }: { listing: Listing & { bids: any[] } }) {
+const BID_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pending', COUNTERED: 'Countered', ACCEPTED: 'Accepted', REJECTED: 'Rejected', WITHDRAWN: 'Withdrawn',
+};
+
+function SellerBidRow({ bid, onUpdated }: { bid: Bid; onUpdated: (updated: Bid) => void }) {
+  const [countering, setCountering] = useState(false);
+  const [counterAmount, setCounterAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleCounter() {
+    const amount = parseFloat(counterAmount);
+    if (!amount || amount <= 0) {
+      setError('Enter a valid counter-offer amount.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const updated = await counterBid(bid.id, amount);
+      onUpdated(updated);
+      setCountering(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send counter-offer.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAccept() {
+    setBusy(true);
+    setError(null);
+    try {
+      onUpdated(await acceptBid(bid.id));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not accept this bid.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleReject() {
+    setBusy(true);
+    setError(null);
+    try {
+      onUpdated(await rejectBid(bid.id));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reject this bid.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="border border-neutral-200 rounded-md p-3">
+      <div className="flex items-center justify-between">
+        <span className="font-medium text-sm">{bid.bidder?.name || 'Buyer'} bid ${Number(bid.amount).toFixed(2)}</span>
+        <span className="text-xs text-neutral-500">{BID_STATUS_LABELS[bid.status]}</span>
+      </div>
+      {bid.counterAmount && <p className="text-xs text-neutral-500 mt-1">Your counter: ${Number(bid.counterAmount).toFixed(2)}</p>}
+
+      {error && <p className="text-red-600 text-xs mt-2">{error}</p>}
+
+      {bid.status === 'PENDING' && !countering && (
+        <div className="flex gap-2 mt-2">
+          <button onClick={handleAccept} disabled={busy} className="text-xs bg-green-700 text-white rounded px-3 py-1.5 font-semibold disabled:opacity-60">
+            Accept
+          </button>
+          <button onClick={() => setCountering(true)} disabled={busy} className="text-xs border border-amber-700 text-amber-700 rounded px-3 py-1.5 font-semibold disabled:opacity-60">
+            Counter
+          </button>
+          <button onClick={handleReject} disabled={busy} className="text-xs border border-red-600 text-red-600 rounded px-3 py-1.5 font-semibold disabled:opacity-60">
+            Reject
+          </button>
+        </div>
+      )}
+
+      {bid.status === 'PENDING' && countering && (
+        <div className="flex gap-2 mt-2">
+          <input
+            type="number"
+            step="0.01"
+            placeholder="Counter amount ($)"
+            value={counterAmount}
+            onChange={(e) => setCounterAmount(e.target.value)}
+            className="flex-1 border border-neutral-300 rounded px-2 py-1.5 text-sm"
+          />
+          <button onClick={handleCounter} disabled={busy} className="text-xs bg-amber-700 text-white rounded px-3 py-1.5 font-semibold disabled:opacity-60">
+            Send
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BuyerBidStatus({ bid, listingId, listingTitle, onUpdated }: { bid: Bid; listingId: string; listingTitle: string; onUpdated: (updated: Bid) => void }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleAccept() {
+    setBusy(true);
+    setError(null);
+    try {
+      onUpdated(await acceptBid(bid.id));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not accept this offer.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleReject() {
+    setBusy(true);
+    setError(null);
+    try {
+      onUpdated(await rejectBid(bid.id));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not decline this offer.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="border-t border-neutral-200 pt-6 mt-6">
+      <h2 className="font-semibold mb-2">Your bid</h2>
+      <p className="text-sm text-neutral-600">
+        You bid ${Number(bid.amount).toFixed(2)} - <span className="font-medium">{BID_STATUS_LABELS[bid.status]}</span>
+      </p>
+
+      {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+
+      {bid.status === 'COUNTERED' && (
+        <div className="mt-3">
+          <p className="text-sm text-neutral-700 mb-2">
+            The seller countered at <span className="font-semibold">${Number(bid.counterAmount).toFixed(2)}</span>
+          </p>
+          <div className="flex gap-2">
+            <button onClick={handleAccept} disabled={busy} className="text-sm bg-green-700 text-white rounded-md px-4 py-2 font-semibold disabled:opacity-60">
+              Accept
+            </button>
+            <button onClick={handleReject} disabled={busy} className="text-sm border border-red-600 text-red-600 rounded-md px-4 py-2 font-semibold disabled:opacity-60">
+              Decline
+            </button>
+          </div>
+        </div>
+      )}
+
+      {bid.status === 'ACCEPTED' && (
+        <button
+          onClick={() =>
+            router.push(`/checkout/new?listingId=${listingId}&bidId=${bid.id}&title=${encodeURIComponent(listingTitle)}&price=${bid.counterAmount || bid.amount}`)
+          }
+          className="mt-3 w-full bg-green-700 text-white rounded-md py-3 font-semibold hover:bg-green-800"
+        >
+          Checkout at ${Number(bid.counterAmount || bid.amount).toFixed(2)}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function ListingDetailClient({ listing }: { listing: Listing & { bids: Bid[] } }) {
   const { user } = useAuth();
   const router = useRouter();
   const [bidAmount, setBidAmount] = useState('');
   const [submittingBid, setSubmittingBid] = useState(false);
   const [bidError, setBidError] = useState<string | null>(null);
-  const [bidSuccess, setBidSuccess] = useState(false);
+  const [bids, setBids] = useState<Bid[]>(listing.bids);
   const [activeImage, setActiveImage] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const [pausingOrResuming, setPausingOrResuming] = useState(false);
@@ -27,12 +192,17 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
   const [sellerRating, setSellerRating] = useState<{ average: number | null; count: number } | null>(null);
 
   const isOwner = user?.id === listing.sellerId;
+  const myBid = !isOwner ? bids.find((b) => b.bidderId === user?.id) : undefined;
 
   useEffect(() => {
     fetchUserRatings(listing.sellerId)
       .then((r) => setSellerRating({ average: r.average, count: r.count }))
       .catch(() => {});
   }, [listing.sellerId]);
+
+  function updateBid(updated: Bid) {
+    setBids((prev) => prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
+  }
 
   async function handleMessageSeller() {
     setMessaging(true);
@@ -56,8 +226,8 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
     setSubmittingBid(true);
     setBidError(null);
     try {
-      await apiRequest('/bids', { method: 'POST', body: { listingId: listing.id, amount } });
-      setBidSuccess(true);
+      const newBid = await apiRequest<Bid>('/bids', { method: 'POST', body: { listingId: listing.id, amount } });
+      setBids((prev) => [...prev, newBid]);
       setBidAmount('');
     } catch (err) {
       setBidError(err instanceof ApiError ? err.message : 'Something went wrong.');
@@ -108,6 +278,8 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
   }
 
   const daysLeft = daysUntilFreeHostingEnds(listing);
+  const activeBidsForOwner = bids.filter((b) => b.status === 'PENDING' || b.status === 'COUNTERED');
+  const settledBidsForOwner = bids.filter((b) => b.status === 'ACCEPTED' || b.status === 'REJECTED');
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -208,6 +380,22 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
           >
             {deleting ? 'Removing...' : 'Remove listing'}
           </button>
+
+          {bids.length > 0 && (
+            <div className="pt-4">
+              <h2 className="font-semibold mb-2">Bids on this listing</h2>
+              <div className="space-y-2">
+                {activeBidsForOwner.map((bid) => (
+                  <SellerBidRow key={bid.id} bid={bid} onUpdated={updateBid} />
+                ))}
+                {settledBidsForOwner.map((bid) => (
+                  <div key={bid.id} className="border border-neutral-100 rounded-md p-3 text-sm text-neutral-500">
+                    {bid.bidder?.name || 'Buyer'} bid ${Number(bid.amount).toFixed(2)} - {BID_STATUS_LABELS[bid.status]}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -241,33 +429,31 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
           </button>
           {messageError && <p className="text-red-600 text-sm">{messageError}</p>}
 
-          {listing.allowBidding && (
+          {listing.allowBidding && !myBid && (
             <div className="border-t border-neutral-200 pt-6">
               <h2 className="font-semibold mb-3">Place a bid</h2>
-              {bidSuccess ? (
-                <p className="text-green-700">Your bid has been sent to the seller.</p>
-              ) : (
-                <form onSubmit={placeBid} className="flex gap-2">
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="Amount ($)"
-                    value={bidAmount}
-                    onChange={(e) => setBidAmount(e.target.value)}
-                    className="flex-1 border border-neutral-300 rounded-md px-4 py-3"
-                  />
-                  <button
-                    type="submit"
-                    disabled={submittingBid}
-                    className="bg-amber-700 text-white rounded-md px-6 font-semibold hover:bg-amber-800 disabled:opacity-60"
-                  >
-                    {submittingBid ? '...' : 'Bid'}
-                  </button>
-                </form>
-              )}
+              <form onSubmit={placeBid} className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Amount ($)"
+                  value={bidAmount}
+                  onChange={(e) => setBidAmount(e.target.value)}
+                  className="flex-1 border border-neutral-300 rounded-md px-4 py-3"
+                />
+                <button
+                  type="submit"
+                  disabled={submittingBid}
+                  className="bg-amber-700 text-white rounded-md px-6 font-semibold hover:bg-amber-800 disabled:opacity-60"
+                >
+                  {submittingBid ? '...' : 'Bid'}
+                </button>
+              </form>
               {bidError && <p className="text-red-600 text-sm mt-2">{bidError}</p>}
             </div>
           )}
+
+          {myBid && <BuyerBidStatus bid={myBid} listingId={listing.id} listingTitle={listing.title} onUpdated={updateBid} />}
         </div>
       )}
     </div>

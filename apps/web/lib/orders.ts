@@ -31,7 +31,7 @@ export function fetchShippingQuote(listingId: string) {
   return apiRequest<ShippingQuote>(`/listings/${listingId}/shipping-quote`);
 }
 
-export function createOrder(input: { listingId: string; localPickup?: boolean }) {
+export function createOrder(input: { listingId: string; localPickup?: boolean; bidId?: string }) {
   return apiRequest<Order>('/orders', { method: 'POST', body: input });
 }
 

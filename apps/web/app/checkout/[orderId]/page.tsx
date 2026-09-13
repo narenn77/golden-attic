@@ -72,6 +72,7 @@ export default function CheckoutPage() {
 
   const isNew = params.orderId === 'new';
   const listingId = searchParams.get('listingId');
+  const bidId = searchParams.get('bidId');
   const titleParam = searchParams.get('title') || 'Item';
   const priceParam = searchParams.get('price');
 
@@ -118,7 +119,7 @@ export default function CheckoutPage() {
     setConfirmingShipping(true);
     setError(null);
     try {
-      const order = await createOrder({ listingId, localPickup });
+      const order = await createOrder({ listingId, localPickup, bidId: bidId || undefined });
       setTitle(titleParam);
       setItemPrice(Number(order.amount));
       setShippingCost(Number(order.shippingCost ?? 0));

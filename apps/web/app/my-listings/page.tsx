@@ -153,6 +153,14 @@ export default function MyListingsPage() {
                 <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${STATUS_COLORS[listing.status]}`}>
                   {STATUS_LABELS[listing.status]}
                 </span>
+                {!!listing.pendingBidCount && (
+                  <Link
+                    href={`/listing/${listing.id}`}
+                    className="text-xs bg-amber-700 text-white px-2 py-0.5 rounded-full shrink-0"
+                  >
+                    {listing.pendingBidCount} bid{listing.pendingBidCount === 1 ? '' : 's'}
+                  </Link>
+                )}
               </div>
               <p className="text-sm text-neutral-500 mb-1">${Number(listing.price).toFixed(2)}</p>
               {listing.status === 'ACTIVE' && <FreeHostingBadge listing={listing} />}

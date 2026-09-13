@@ -3,11 +3,23 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../lib/AuthContext';
+import { useNotificationCounts } from '../lib/useNotificationCounts';
 import Logo from './Logo';
+
+function Badge({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <span className="bg-amber-700 text-white text-xs rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center">
+      {count > 9 ? '9+' : count}
+    </span>
+  );
+}
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { unreadMessages, bidActivity } = useNotificationCounts();
+  const hasAnyNotification = unreadMessages > 0 || bidActivity > 0;
 
   function handleLogout() {
     logout();
@@ -35,22 +47,27 @@ export default function Navbar() {
                   sidebar accordions. Keeps the top-level nav from growing
                   every time a new account page gets added. */}
               <details className="relative">
-                <summary className="text-sm font-medium text-neutral-700 cursor-pointer list-none flex items-center gap-1">
+                <summary className="text-sm font-medium text-neutral-700 cursor-pointer list-none flex items-center gap-1.5">
                   {user.name}
+                  {/* Visible even before opening the menu, so unread activity
+                      is noticeable at a glance rather than hidden behind a click. */}
+                  {hasAnyNotification && <span className="w-2 h-2 rounded-full bg-red-500" />}
                   <span className="text-neutral-400 text-xs">▾</span>
                 </summary>
-                <div className="absolute right-0 mt-2 w-44 bg-white border border-neutral-200 rounded-md shadow-lg py-1 z-20">
+                <div className="absolute right-0 mt-2 w-52 bg-white border border-neutral-200 rounded-md shadow-lg py-1 z-20">
                   <Link href="/profile" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
                     Profile
                   </Link>
-                  <Link href="/my-listings" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
+                  <Link href="/my-listings" className="flex items-center justify-between px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
                     My Listings
+                    <Badge count={bidActivity} />
                   </Link>
                   <Link href="/orders" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
                     Orders
                   </Link>
-                  <Link href="/messages" className="block px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
+                  <Link href="/messages" className="flex items-center justify-between px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50">
                     Messages
+                    <Badge count={unreadMessages} />
                   </Link>
                   <button
                     onClick={handleLogout}
