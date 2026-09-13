@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { fetchListing, deleteListing, pauseListing, resumeListing, daysUntilFreeHostingEnds } from '../api/listings';
+import { startConversation } from '../api/conversations';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import LikeButton from '../components/LikeButton';
@@ -15,6 +16,7 @@ export default function ListingDetailScreen({ route, navigation }: any) {
   const [activeImage, setActiveImage] = useState(0);
   const [deleting, setDeleting] = useState(false);
   const [pausingOrResuming, setPausingOrResuming] = useState(false);
+  const [messaging, setMessaging] = useState(false);
 
   useEffect(() => {
     fetchListing(id)
@@ -80,6 +82,18 @@ export default function ListingDetailScreen({ route, navigation }: any) {
       Alert.alert('Could not resume listing', err?.message || 'Something went wrong.');
     } finally {
       setPausingOrResuming(false);
+    }
+  }
+
+  async function handleMessageSeller() {
+    setMessaging(true);
+    try {
+      const conversation = await startConversation(id);
+      navigation.navigate('Conversation', { id: conversation.id });
+    } catch (err: any) {
+      Alert.alert('Could not start conversation', err?.message || 'Something went wrong.');
+    } finally {
+      setMessaging(false);
     }
   }
 
@@ -162,6 +176,12 @@ export default function ListingDetailScreen({ route, navigation }: any) {
           </TouchableOpacity>
         )}
 
+        {!isOwner && user && listing.status === 'ACTIVE' && (
+          <TouchableOpacity style={styles.messageButton} onPress={handleMessageSeller} disabled={messaging}>
+            {messaging ? <ActivityIndicator color="#444" /> : <Text style={styles.messageButtonText}>Message seller</Text>}
+          </TouchableOpacity>
+        )}
+
         {!isOwner && user && listing.allowBidding && listing.status === 'ACTIVE' && (
           <View style={styles.bidSection}>
             <Text style={styles.bidLabel}>Place a bid</Text>
@@ -239,6 +259,8 @@ const styles = StyleSheet.create({
   loginButtonText: { color: '#fff', fontWeight: '600' },
   buyButton: { backgroundColor: '#2E7D32', borderRadius: 8, padding: 16, alignItems: 'center', marginTop: 12 },
   buyButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  messageButton: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 10 },
+  messageButtonText: { color: '#444', fontWeight: '600' },
   bidSection: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 16 },
   bidLabel: { fontSize: 15, fontWeight: '600', marginBottom: 8 },
   bidRow: { flexDirection: 'row', gap: 8 },
