@@ -11,6 +11,20 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.19.0] - 2026-09-13
+### Added
+- `POST /admin/maintenance`: emails sellers whose listings have 3 or fewer
+  days of free hosting left (sent once per listing), and removes listings
+  paused for 30+ days without being resumed. Protected by a shared secret.
+  Live-tested: correct warn-once behavior, correct paused-listing cleanup.
+### Known gap
+- This endpoint needs something external to trigger it on a schedule. A
+  GitHub Actions workflow for this was written but could not be pushed -
+  the GitHub token in use lacks the `workflow` OAuth scope required to
+  create/update files under `.github/workflows/`. The workflow file exists
+  locally; it needs either a token with that scope, or to be added directly
+  via GitHub's web UI. See DEPLOYMENT.md for the intended setup.
+
 ## [v0.18.0] - 2026-09-13
 ### Added
 - Ratings, on both web and mobile - the buyer/seller trust system:
