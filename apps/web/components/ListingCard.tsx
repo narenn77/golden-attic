@@ -1,7 +1,13 @@
+'use client';
+
 import Link from 'next/link';
 import type { Listing } from '../lib/listings';
+import LikeButton from './LikeButton';
+import { useAuth } from '../lib/AuthContext';
 
 export default function ListingCard({ listing }: { listing: Listing }) {
+  const { user } = useAuth();
+
   return (
     <Link
       href={`/listing/${listing.id}`}
@@ -26,7 +32,16 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </span>
           )}
         </p>
-        <p className="text-amber-700 font-bold">${Number(listing.price).toFixed(2)}</p>
+        <div className="flex items-center justify-between">
+          <p className="text-amber-700 font-bold">${Number(listing.price).toFixed(2)}</p>
+          <LikeButton
+            listingId={listing.id}
+            initialLiked={listing.likedByMe}
+            initialCount={listing.likeCount}
+            isOwner={user?.id === listing.sellerId}
+            size="sm"
+          />
+        </div>
       </div>
     </Link>
   );

@@ -16,6 +16,9 @@ export default function Navbar() {
         <nav className="flex items-center gap-4">
           {user ? (
             <>
+              <Link href="/my-listings" className="text-sm font-medium text-neutral-700 hover:underline">
+                My Listings
+              </Link>
               <Link href="/sell" className="text-sm font-medium text-amber-700 hover:underline">
                 Sell an item
               </Link>

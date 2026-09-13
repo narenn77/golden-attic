@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../lib/AuthContext';
 import { apiRequest, ApiError } from '../../../lib/client';
-import { deleteListing, type Listing } from '../../../lib/listings';
+import { deleteListing, pauseListing, resumeListing, daysUntilFreeHostingEnds, type Listing } from '../../../lib/listings';
+import LikeButton from '../../../components/LikeButton';
 
 export default function ListingDetailClient({ listing }: { listing: Listing & { bids: any[] } }) {
   const { user } = useAuth();
@@ -15,7 +16,9 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
   const [bidSuccess, setBidSuccess] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [pausingOrResuming, setPausingOrResuming] = useState(false);
+  const [ownerActionError, setOwnerActionError] = useState<string | null>(null);
+  const [status, setStatus] = useState(listing.status);
 
   const isOwner = user?.id === listing.sellerId;
 
@@ -44,15 +47,43 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
     if (!confirmed) return;
 
     setDeleting(true);
-    setDeleteError(null);
+    setOwnerActionError(null);
     try {
       await deleteListing(listing.id);
       router.push('/');
     } catch (err) {
-      setDeleteError(err instanceof ApiError ? err.message : 'Could not remove this listing.');
+      setOwnerActionError(err instanceof ApiError ? err.message : 'Could not remove this listing.');
       setDeleting(false);
     }
   }
+
+  async function handlePause() {
+    setPausingOrResuming(true);
+    setOwnerActionError(null);
+    try {
+      await pauseListing(listing.id);
+      setStatus('PAUSED');
+    } catch (err) {
+      setOwnerActionError(err instanceof ApiError ? err.message : 'Could not pause this listing.');
+    } finally {
+      setPausingOrResuming(false);
+    }
+  }
+
+  async function handleResume() {
+    setPausingOrResuming(true);
+    setOwnerActionError(null);
+    try {
+      await resumeListing(listing.id);
+      setStatus('ACTIVE');
+    } catch (err) {
+      setOwnerActionError(err instanceof ApiError ? err.message : 'Could not resume this listing.');
+    } finally {
+      setPausingOrResuming(false);
+    }
+  }
+
+  const daysLeft = daysUntilFreeHostingEnds(listing);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -83,7 +114,15 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
       )}
       {listing.images.length <= 1 && <div className="mb-6" />}
 
-      <h1 className="text-2xl font-bold mb-1">{listing.title}</h1>
+      <div className="flex items-start justify-between mb-1">
+        <h1 className="text-2xl font-bold">{listing.title}</h1>
+        <LikeButton
+          listingId={listing.id}
+          initialLiked={listing.likedByMe}
+          initialCount={listing.likeCount}
+          isOwner={isOwner}
+        />
+      </div>
       <p className="text-neutral-500 mb-3">
         {listing.category}
         {(listing.year || listing.country) && (
@@ -97,8 +136,37 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
 
       {isOwner && (
         <div className="space-y-3">
-          <div className="bg-amber-50 text-amber-800 rounded-md p-4 text-center font-medium">This is your listing</div>
-          {deleteError && <p className="text-red-600 text-sm text-center">{deleteError}</p>}
+          <div className="bg-amber-50 text-amber-800 rounded-md p-4 text-center">
+            <p className="font-medium">This is your listing</p>
+            {status === 'ACTIVE' && daysLeft != null && (
+              <p className="text-sm mt-1">
+                {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} left of free hosting` : 'Hosting fee now applies (1%/month)'}
+              </p>
+            )}
+            {status === 'PAUSED' && <p className="text-sm mt-1">Paused - hidden from buyers</p>}
+          </div>
+
+          {ownerActionError && <p className="text-red-600 text-sm text-center">{ownerActionError}</p>}
+
+          {status === 'ACTIVE' && (
+            <button
+              onClick={handlePause}
+              disabled={pausingOrResuming}
+              className="w-full border border-amber-700 text-amber-700 rounded-md py-3 font-semibold hover:bg-amber-50 disabled:opacity-60"
+            >
+              {pausingOrResuming ? 'Pausing...' : 'Pause listing'}
+            </button>
+          )}
+          {status === 'PAUSED' && (
+            <button
+              onClick={handleResume}
+              disabled={pausingOrResuming}
+              className="w-full border border-green-700 text-green-700 rounded-md py-3 font-semibold hover:bg-green-50 disabled:opacity-60"
+            >
+              {pausingOrResuming ? 'Resuming...' : 'Resume listing'}
+            </button>
+          )}
+
           <button
             onClick={handleDelete}
             disabled={deleting}
@@ -109,7 +177,19 @@ export default function ListingDetailClient({ listing }: { listing: Listing & { 
         </div>
       )}
 
-      {!isOwner && listing.status === 'ACTIVE' && (
+      {!isOwner && !user && status === 'ACTIVE' && (
+        <div className="bg-neutral-50 border border-neutral-200 rounded-md p-4 text-center">
+          <p className="text-neutral-700 mb-3">Log in to buy or place a bid on this item.</p>
+          <button
+            onClick={() => router.push(`/login?next=/listing/${listing.id}`)}
+            className="bg-amber-700 text-white rounded-md px-6 py-3 font-semibold hover:bg-amber-800"
+          >
+            Log in
+          </button>
+        </div>
+      )}
+
+      {!isOwner && user && status === 'ACTIVE' && (
         <div className="space-y-6">
           <button
             onClick={() => router.push(`/checkout/new?listingId=${listing.id}&title=${encodeURIComponent(listing.title)}&price=${listing.price}`)}
