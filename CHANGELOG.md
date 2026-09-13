@@ -11,6 +11,23 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.19.2] - 2026-09-13
+### Fixed
+- Checkboxes and radio buttons (filter sidebar, checkout shipping choice)
+  appeared unresponsive - actually a dark-mode rendering bug, same root
+  cause as the earlier invisible-dropdown-text fix: leftover
+  create-next-app boilerplate flipped the page to a dark theme via OS
+  preference, but never set `color-scheme`, so native form controls
+  rendered in the browser's own dark palette with near-invisible
+  checked/unchecked contrast. Removed the unused dark-mode CSS and set
+  `color-scheme: light` globally, fixing this permanently for every native
+  form control rather than patching each one individually.
+### Clarified
+- The Country filter only shows countries actually used by current active
+  listings (by design, so no filter option ever shows zero results) - not
+  a bug, but confirmed via the live API that all 13 categories are always
+  returned; the country list will grow as more listings get a country set.
+
 ## [v0.19.1] - 2026-09-13
 ### Fixed
 - Logout was hard to find on both platforms - not missing, just crowded
