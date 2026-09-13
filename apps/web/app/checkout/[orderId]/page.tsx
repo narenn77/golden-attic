@@ -165,7 +165,7 @@ export default function CheckoutPage() {
 
         {quote?.localPickupEligible && (
           <label className="flex items-start gap-3 border border-neutral-200 rounded-md p-3 mb-2 cursor-pointer">
-            <input type="radio" checked={localPickup} onChange={() => setLocalPickup(true)} className="mt-1 accent-amber-700" />
+            <input type="radio" checked={localPickup} onChange={() => setLocalPickup(true)} className="mt-1 accent-amber-700 [color-scheme:light]" />
             <div>
               <p className="font-medium text-sm">Local pickup</p>
               <p className="text-xs text-neutral-500">
@@ -176,7 +176,7 @@ export default function CheckoutPage() {
         )}
 
         <label className="flex items-start gap-3 border border-neutral-200 rounded-md p-3 mb-6 cursor-pointer">
-          <input type="radio" checked={!localPickup} onChange={() => setLocalPickup(false)} className="mt-1 accent-amber-700" />
+          <input type="radio" checked={!localPickup} onChange={() => setLocalPickup(false)} className="mt-1 accent-amber-700 [color-scheme:light]" />
           <div>
             <p className="font-medium text-sm">Ship to my address</p>
             <p className="text-xs text-neutral-500">

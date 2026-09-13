@@ -98,7 +98,7 @@ export default function FilterSidebar({ options }: { options: ListingFilterOptio
               type="checkbox"
               checked={selectedCategories.includes(c)}
               onChange={() => toggleMultiValue('category', c, selectedCategories)}
-              className="accent-amber-700"
+              className="accent-amber-700 [color-scheme:light]"
             />
             {c}
           </label>
@@ -113,7 +113,7 @@ export default function FilterSidebar({ options }: { options: ListingFilterOptio
                 type="checkbox"
                 checked={selectedCountries.includes(c)}
                 onChange={() => toggleMultiValue('country', c, selectedCountries)}
-                className="accent-amber-700"
+                className="accent-amber-700 [color-scheme:light]"
               />
               {c}
             </label>
@@ -124,7 +124,7 @@ export default function FilterSidebar({ options }: { options: ListingFilterOptio
       {decades.length > 0 && (
         <FilterSection title="Decade" defaultOpen={false}>
           <label className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
-            <input type="radio" name="decade" checked={!selectedDecade} onChange={() => setSingleValue(['decade'], '')} className="accent-amber-700" />
+            <input type="radio" name="decade" checked={!selectedDecade} onChange={() => setSingleValue(['decade'], '')} className="accent-amber-700 [color-scheme:light]" />
             All decades
           </label>
           {decades.map((d) => (
@@ -134,7 +134,7 @@ export default function FilterSidebar({ options }: { options: ListingFilterOptio
                 name="decade"
                 checked={selectedDecade === String(d)}
                 onChange={() => setSingleValue(['decade'], String(d))}
-                className="accent-amber-700"
+                className="accent-amber-700 [color-scheme:light]"
               />
               {decadeLabel(d)}
             </label>
@@ -150,7 +150,7 @@ export default function FilterSidebar({ options }: { options: ListingFilterOptio
               name="priceBand"
               checked={!selectedPriceBand}
               onChange={() => setSingleValue(['minPrice', 'maxPrice'], '')}
-              className="accent-amber-700"
+              className="accent-amber-700 [color-scheme:light]"
             />
             All prices
           </label>
@@ -161,7 +161,7 @@ export default function FilterSidebar({ options }: { options: ListingFilterOptio
                 name="priceBand"
                 checked={selectedPriceBand === `${min}-${max}`}
                 onChange={() => setSingleValue(['minPrice', 'maxPrice'], `${min}-${max}`)}
-                className="accent-amber-700"
+                className="accent-amber-700 [color-scheme:light]"
               />
               {priceBandLabel(min, max)}
             </label>
