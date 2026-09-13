@@ -61,6 +61,23 @@ conversationsRouter.get('/', requireAuth, asyncHandler(async (req, res) => {
   res.json(withUnread);
 }));
 
+// GET /conversations/unread-count - total unread messages across every
+// conversation the user is part of, for a nav badge. Cheap enough to poll
+// periodically without pulling the full conversation list each time.
+conversationsRouter.get('/unread-count', requireAuth, asyncHandler(async (req, res) => {
+  const userId = req.user!.userId;
+
+  const count = await prisma.message.count({
+    where: {
+      senderId: { not: userId },
+      readAt: null,
+      conversation: { OR: [{ buyerId: userId }, { sellerId: userId }] },
+    },
+  });
+
+  res.json({ count });
+}));
+
 async function getConversationIfParticipant(conversationId: string, userId: string) {
   const conversation = await prisma.conversation.findUnique({
     where: { id: conversationId },

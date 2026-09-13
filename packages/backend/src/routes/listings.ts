@@ -17,17 +17,19 @@ const SORT_OPTIONS = {
   year_oldest: { year: 'asc' as const },
 };
 
-// Reshapes a listing fetched with `_count.likes` and an optional filtered
-// `likes` relation (containing at most the current user's own like row)
-// into a flat likeCount/likedByMe pair, and drops the internal fields.
-function shapeListingWithLikes<T extends { _count?: { likes: number }; likes?: unknown[] }>(
+// Reshapes a listing fetched with `_count.likes` (and optionally
+// `_count.bids`, only requested for the owner's own listings) plus an
+// optional filtered `likes` relation (containing at most the current
+// user's own like row) into flat fields, dropping the internal ones.
+function shapeListingWithLikes<T extends { _count?: { likes: number; bids?: number }; likes?: unknown[] }>(
   listing: T
-): Omit<T, '_count' | 'likes'> & { likeCount: number; likedByMe: boolean } {
+): Omit<T, '_count' | 'likes'> & { likeCount: number; likedByMe: boolean; pendingBidCount?: number } {
   const { _count, likes, ...rest } = listing;
   return {
     ...rest,
     likeCount: _count?.likes ?? 0,
     likedByMe: Array.isArray(likes) && likes.length > 0,
+    ...(_count?.bids !== undefined ? { pendingBidCount: _count.bids } : {}),
   };
 }
 
@@ -89,7 +91,12 @@ listingsRouter.get('/', optionalAuth, asyncHandler(async (req, res) => {
     ...(orderBy ? { orderBy } : {}),
     include: {
       seller: { select: { id: true, name: true } },
-      _count: { select: { likes: true } },
+      _count: {
+        select: {
+          likes: true,
+          ...(isOwnListings ? { bids: { where: { status: 'PENDING' } } } : {}),
+        },
+      },
       ...(req.user ? { likes: { where: { userId: req.user.userId }, select: { id: true } } } : {}),
     },
   });

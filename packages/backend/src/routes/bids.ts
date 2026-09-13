@@ -121,7 +121,25 @@ bidsRouter.get('/', requireAuth, asyncHandler(async (req, res) => {
   const bids = await prisma.bid.findMany({
     where,
     orderBy: { createdAt: 'desc' },
+    include: {
+      listing: { select: { id: true, title: true, images: true, price: true, status: true } },
+      bidder: { select: { id: true, name: true } },
+    },
   });
 
   res.json(bids);
+}));
+
+// GET /bids/notifications - lightweight counts for nav badges: bids on the
+// caller's own listings that still need a response, and bids the caller
+// placed that the seller has countered (needing the buyer's response).
+bidsRouter.get('/meta/notifications', requireAuth, asyncHandler(async (req, res) => {
+  const userId = req.user!.userId;
+
+  const [pendingOnMyListings, counteredOnMyBids] = await Promise.all([
+    prisma.bid.count({ where: { status: 'PENDING', listing: { sellerId: userId } } }),
+    prisma.bid.count({ where: { status: 'COUNTERED', bidderId: userId } }),
+  ]);
+
+  res.json({ pendingOnMyListings, counteredOnMyBids });
 }));
