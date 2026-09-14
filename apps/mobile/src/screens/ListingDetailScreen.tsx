@@ -3,15 +3,172 @@ import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, ActivityIn
 import { fetchListing, deleteListing, pauseListing, resumeListing, daysUntilFreeHostingEnds } from '../api/listings';
 import { startConversation } from '../api/conversations';
 import { fetchUserRatings } from '../api/ratings';
+import { counterBid, acceptBid, rejectBid, type Bid } from '../api/bids';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import LikeButton from '../components/LikeButton';
 import RatingStars from '../components/RatingStars';
 
+const BID_STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pending', COUNTERED: 'Countered', ACCEPTED: 'Accepted', REJECTED: 'Rejected', WITHDRAWN: 'Withdrawn',
+};
+
+function SellerBidRow({ bid, onUpdated }: { bid: Bid; onUpdated: (updated: Bid) => void }) {
+  const [countering, setCountering] = useState(false);
+  const [counterAmount, setCounterAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function handleCounter() {
+    const amount = parseFloat(counterAmount);
+    if (!amount || amount <= 0) {
+      Alert.alert('Invalid amount', 'Enter a valid counter-offer amount.');
+      return;
+    }
+    setBusy(true);
+    try {
+      onUpdated(await counterBid(bid.id, amount));
+      setCountering(false);
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Could not send counter-offer.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAccept() {
+    setBusy(true);
+    try {
+      onUpdated(await acceptBid(bid.id));
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Could not accept this bid.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleReject() {
+    setBusy(true);
+    try {
+      onUpdated(await rejectBid(bid.id));
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Could not reject this bid.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={styles.bidRowCard}>
+      <View style={styles.bidRowHeader}>
+        <Text style={styles.bidRowTitle}>{bid.bidder?.name || 'Buyer'} bid ${Number(bid.amount).toFixed(2)}</Text>
+        <Text style={styles.bidRowStatus}>{BID_STATUS_LABELS[bid.status]}</Text>
+      </View>
+      {bid.counterAmount && <Text style={styles.bidRowSubtext}>Your counter: ${Number(bid.counterAmount).toFixed(2)}</Text>}
+
+      {bid.status === 'PENDING' && !countering && (
+        <View style={styles.bidActionsRow}>
+          <TouchableOpacity style={styles.bidAcceptButton} onPress={handleAccept} disabled={busy}>
+            <Text style={styles.bidAcceptButtonText}>Accept</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.bidCounterButton} onPress={() => setCountering(true)} disabled={busy}>
+            <Text style={styles.bidCounterButtonText}>Counter</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.bidRejectButton} onPress={handleReject} disabled={busy}>
+            <Text style={styles.bidRejectButtonText}>Reject</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {bid.status === 'PENDING' && countering && (
+        <View style={styles.bidCounterRow}>
+          <TextInput
+            style={styles.bidCounterInput}
+            placeholder="Counter amount ($)"
+            keyboardType="decimal-pad"
+            value={counterAmount}
+            onChangeText={setCounterAmount}
+          />
+          <TouchableOpacity style={styles.bidAcceptButton} onPress={handleCounter} disabled={busy}>
+            {busy ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.bidAcceptButtonText}>Send</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function BuyerBidStatus({ bid, listing, navigation, onUpdated }: { bid: Bid; listing: any; navigation: any; onUpdated: (updated: Bid) => void }) {
+  const [busy, setBusy] = useState(false);
+
+  async function handleAccept() {
+    setBusy(true);
+    try {
+      onUpdated(await acceptBid(bid.id));
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Could not accept this offer.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleReject() {
+    setBusy(true);
+    try {
+      onUpdated(await rejectBid(bid.id));
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Could not decline this offer.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={styles.bidSection}>
+      <Text style={styles.bidLabel}>Your bid</Text>
+      <Text style={styles.myBidText}>
+        You bid ${Number(bid.amount).toFixed(2)} - <Text style={{ fontWeight: '700' }}>{BID_STATUS_LABELS[bid.status]}</Text>
+      </Text>
+
+      {bid.status === 'COUNTERED' && (
+        <View style={{ marginTop: 10 }}>
+          <Text style={styles.myBidText}>
+            The seller countered at <Text style={{ fontWeight: '700' }}>${Number(bid.counterAmount).toFixed(2)}</Text>
+          </Text>
+          <View style={styles.bidActionsRow}>
+            <TouchableOpacity style={styles.bidAcceptButton} onPress={handleAccept} disabled={busy}>
+              <Text style={styles.bidAcceptButtonText}>Accept</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bidRejectButton} onPress={handleReject} disabled={busy}>
+              <Text style={styles.bidRejectButtonText}>Decline</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {bid.status === 'ACCEPTED' && (
+        <TouchableOpacity
+          style={[styles.buyButton, { marginTop: 10 }]}
+          onPress={() =>
+            navigation.navigate('Checkout', {
+              listingId: listing.id,
+              bidId: bid.id,
+              title: listing.title,
+              price: bid.counterAmount || bid.amount,
+            })
+          }
+        >
+          <Text style={styles.buyButtonText}>Checkout at ${Number(bid.counterAmount || bid.amount).toFixed(2)}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 export default function ListingDetailScreen({ route, navigation }: any) {
   const { id } = route.params;
   const { user } = useAuth();
   const [listing, setListing] = useState<any | null>(null);
+  const [bids, setBids] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
   const [bidAmount, setBidAmount] = useState('');
   const [submittingBid, setSubmittingBid] = useState(false);
@@ -25,6 +182,7 @@ export default function ListingDetailScreen({ route, navigation }: any) {
     fetchListing(id)
       .then((data) => {
         setListing(data);
+        setBids(data.bids || []);
         fetchUserRatings(data.sellerId)
           .then((r) => setSellerRating({ average: r.average, count: r.count }))
           .catch(() => {});
@@ -32,6 +190,10 @@ export default function ListingDetailScreen({ route, navigation }: any) {
       .catch(() => Alert.alert('Error', 'Could not load this listing.'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  function updateBid(updated: Bid) {
+    setBids((prev) => prev.map((b) => (b.id === updated.id ? { ...b, ...updated } : b)));
+  }
 
   async function placeBid() {
     const amount = parseFloat(bidAmount);
@@ -41,9 +203,10 @@ export default function ListingDetailScreen({ route, navigation }: any) {
     }
     setSubmittingBid(true);
     try {
-      await apiRequest('/bids', { method: 'POST', body: { listingId: id, amount } });
-      Alert.alert('Bid placed', 'Your bid has been sent to the seller.');
+      const newBid = await apiRequest<Bid>('/bids', { method: 'POST', body: { listingId: id, amount } });
+      setBids((prev) => [...prev, newBid]);
       setBidAmount('');
+      Alert.alert('Bid placed', 'Your bid has been sent to the seller.');
     } catch (err: any) {
       Alert.alert('Could not place bid', err?.message || 'Something went wrong.');
     } finally {
@@ -123,6 +286,9 @@ export default function ListingDetailScreen({ route, navigation }: any) {
 
   const isOwner = user?.id === listing.sellerId;
   const daysLeft = daysUntilFreeHostingEnds(listing);
+  const myBid = !isOwner ? bids.find((b) => b.bidderId === user?.id) : undefined;
+  const activeBidsForOwner = bids.filter((b) => b.status === 'PENDING' || b.status === 'COUNTERED');
+  const settledBidsForOwner = bids.filter((b) => b.status === 'ACCEPTED' || b.status === 'REJECTED');
 
   return (
     <ScrollView style={styles.container}>
@@ -200,7 +366,7 @@ export default function ListingDetailScreen({ route, navigation }: any) {
           </TouchableOpacity>
         )}
 
-        {!isOwner && user && listing.allowBidding && listing.status === 'ACTIVE' && (
+        {!isOwner && user && listing.allowBidding && listing.status === 'ACTIVE' && !myBid && (
           <View style={styles.bidSection}>
             <Text style={styles.bidLabel}>Place a bid</Text>
             <View style={styles.bidRow}>
@@ -216,6 +382,10 @@ export default function ListingDetailScreen({ route, navigation }: any) {
               </TouchableOpacity>
             </View>
           </View>
+        )}
+
+        {!isOwner && myBid && (
+          <BuyerBidStatus bid={myBid} listing={listing} navigation={navigation} onUpdated={updateBid} />
         )}
 
         {isOwner && (
@@ -248,6 +418,22 @@ export default function ListingDetailScreen({ route, navigation }: any) {
                 <Text style={styles.deleteButtonText}>Remove listing</Text>
               )}
             </TouchableOpacity>
+
+            {bids.length > 0 && (
+              <View style={{ marginTop: 16 }}>
+                <Text style={styles.bidLabel}>Bids on this listing</Text>
+                {activeBidsForOwner.map((bid) => (
+                  <SellerBidRow key={bid.id} bid={bid} onUpdated={updateBid} />
+                ))}
+                {settledBidsForOwner.map((bid) => (
+                  <View key={bid.id} style={styles.settledBidRow}>
+                    <Text style={styles.settledBidText}>
+                      {bid.bidder?.name || 'Buyer'} bid ${Number(bid.amount).toFixed(2)} - {BID_STATUS_LABELS[bid.status]}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -284,6 +470,7 @@ const styles = StyleSheet.create({
   messageButtonText: { color: '#444', fontWeight: '600' },
   bidSection: { marginTop: 12, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 16 },
   bidLabel: { fontSize: 15, fontWeight: '600', marginBottom: 8 },
+  myBidText: { fontSize: 14, color: '#444' },
   bidRow: { flexDirection: 'row', gap: 8 },
   bidInput: { flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 16 },
   bidButton: { backgroundColor: '#B8860B', borderRadius: 8, paddingHorizontal: 20, justifyContent: 'center' },
@@ -297,4 +484,20 @@ const styles = StyleSheet.create({
   resumeButtonText: { color: '#2E7D32', fontWeight: '600' },
   deleteButton: { borderWidth: 1, borderColor: '#D32F2F', borderRadius: 8, padding: 14, alignItems: 'center', marginTop: 12 },
   deleteButtonText: { color: '#D32F2F', fontWeight: '600' },
+  bidRowCard: { borderWidth: 1, borderColor: '#eee', borderRadius: 8, padding: 10, marginTop: 8 },
+  bidRowHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+  bidRowTitle: { fontSize: 13, fontWeight: '600' },
+  bidRowStatus: { fontSize: 12, color: '#888' },
+  bidRowSubtext: { fontSize: 12, color: '#888', marginTop: 2 },
+  bidActionsRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  bidAcceptButton: { backgroundColor: '#2E7D32', borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12 },
+  bidAcceptButtonText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  bidCounterButton: { borderWidth: 1, borderColor: '#B8860B', borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12 },
+  bidCounterButtonText: { color: '#B8860B', fontSize: 12, fontWeight: '600' },
+  bidRejectButton: { borderWidth: 1, borderColor: '#D32F2F', borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12 },
+  bidRejectButtonText: { color: '#D32F2F', fontSize: 12, fontWeight: '600' },
+  bidCounterRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  bidCounterInput: { flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 6, padding: 8, fontSize: 13 },
+  settledBidRow: { borderWidth: 1, borderColor: '#f5f5f5', borderRadius: 8, padding: 10, marginTop: 8 },
+  settledBidText: { fontSize: 13, color: '#999' },
 });

@@ -126,6 +126,11 @@ export default function MyListingsScreen({ navigation }: any) {
                 <View style={[styles.badge, { backgroundColor: `${STATUS_COLORS[item.status]}20` }]}>
                   <Text style={[styles.badgeText, { color: STATUS_COLORS[item.status] }]}>{STATUS_LABELS[item.status]}</Text>
                 </View>
+                {!!item.pendingBidCount && (
+                  <View style={styles.bidBadge}>
+                    <Text style={styles.bidBadgeText}>{item.pendingBidCount} bid{item.pendingBidCount === 1 ? '' : 's'}</Text>
+                  </View>
+                )}
               </View>
               <Text style={styles.price}>${Number(item.price).toFixed(2)}</Text>
               {item.status === 'ACTIVE' && daysLeft != null && (
@@ -173,6 +178,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 15, fontWeight: '600', flexShrink: 1 },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   badgeText: { fontSize: 11, fontWeight: '600' },
+  bidBadge: { backgroundColor: '#B8860B', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  bidBadgeText: { fontSize: 11, fontWeight: '600', color: '#fff' },
   price: { fontSize: 14, color: '#666', marginBottom: 2 },
   hostingText: { fontSize: 12, color: '#999', marginBottom: 4 },
   actionsRow: { flexDirection: 'row', gap: 16, marginTop: 4 },

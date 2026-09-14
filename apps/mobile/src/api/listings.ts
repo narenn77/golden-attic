@@ -20,6 +20,7 @@ export interface Listing {
   pausedAt: string | null;
   likeCount: number;
   likedByMe: boolean;
+  pendingBidCount?: number; // only present when viewing your own listings
   seller?: { id: string; name: string };
 }
 

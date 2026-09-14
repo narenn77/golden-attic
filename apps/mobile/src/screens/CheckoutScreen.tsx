@@ -5,9 +5,9 @@ import { createOrder, fetchShippingQuote, type ShippingQuote } from '../api/orde
 import { createCheckoutIntent } from '../api/payments';
 import { ApiError } from '../api/client';
 
-// Navigated to with { listingId, title, price } in route.params.
+// Navigated to with { listingId, title, price, bidId? } in route.params.
 export default function CheckoutScreen({ route, navigation }: any) {
-  const { listingId, title, price } = route.params;
+  const { listingId, title, price, bidId } = route.params;
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,7 @@ export default function CheckoutScreen({ route, navigation }: any) {
     setConfirming(true);
     setError(null);
     try {
-      const order = await createOrder({ listingId, localPickup });
+      const order = await createOrder({ listingId, localPickup, bidId });
       setOrderId(order.id);
       setShippingCost(Number(order.shippingCost ?? 0));
 
