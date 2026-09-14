@@ -11,6 +11,24 @@ To see exactly what changed between two releases: `git diff v0.9.0 v0.10.0`.
 ## [Unreleased]
 Nothing yet.
 
+## [v0.20.0] - 2026-09-13
+### Added
+- Notification badges (web + mobile): unread message counts and bid
+  activity, visible in the navbar dropdown (web) and Profile screen /
+  header (mobile), with a dot/badge visible at a glance before opening
+  any menu
+- Full bid response UI (web + mobile) - a real gap: sellers previously had
+  **no way to see or act on a bid anywhere in the app**. Now sellers can
+  Accept/Counter/Reject bids directly on their listing page. Buyers see
+  their bid status inline, can accept/decline a counter-offer, and get a
+  "Checkout at $X" button once accepted - closing a loop that previously
+  had no path from an accepted bid to completing the purchase
+- Backend: unread-message-count endpoint, bid-notification summary
+  endpoint, pendingBidCount on My Listings, enriched bid responses with
+  listing/bidder details
+- Live-tested full flow: counts correct at every step of the bid
+  lifecycle, unread counts correct for sender vs. recipient
+
 ## [v0.19.3] - 2026-09-13
 ### Added
 - Every filter section now always has an "All ___" reset option
