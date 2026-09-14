@@ -3,9 +3,20 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import { useAuth } from '../context/AuthContext';
 import * as authApi from '../api/auth';
 import { ApiError } from '../api/client';
+import { useNotificationCounts } from '../hooks/useNotificationCounts';
+
+function NavBadge({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <View style={styles.badge}>
+      <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
+    </View>
+  );
+}
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, refreshUser } = useAuth();
+  const { unreadMessages, bidActivity } = useNotificationCounts();
   const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [resendMessage, setResendMessage] = useState('');
 
@@ -85,11 +96,13 @@ export default function ProfileScreen({ navigation }: any) {
             ? 'You can list items for sale.'
             : 'Set up payouts to start selling your items.'}
         </Text>
-        <TouchableOpacity style={styles.payoutButton} onPress={() => navigation.navigate('MyListings')}>
+        <TouchableOpacity style={[styles.payoutButton, styles.payoutButtonRow]} onPress={() => navigation.navigate('MyListings')}>
           <Text style={styles.payoutButtonText}>My Listings</Text>
+          <NavBadge count={bidActivity} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.payoutButton} onPress={() => navigation.navigate('Messages')}>
+        <TouchableOpacity style={[styles.payoutButton, styles.payoutButtonRow]} onPress={() => navigation.navigate('Messages')}>
           <Text style={styles.payoutButtonText}>Messages</Text>
+          <NavBadge count={unreadMessages} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.payoutButton} onPress={() => navigation.navigate('Orders')}>
           <Text style={styles.payoutButtonText}>My Orders</Text>
@@ -135,7 +148,10 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
   sectionBody: { fontSize: 14, color: '#666', marginBottom: 8 },
   payoutButton: { borderWidth: 1, borderColor: '#B8860B', borderRadius: 8, padding: 12, alignItems: 'center', marginTop: 12 },
+  payoutButtonRow: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
   payoutButtonText: { color: '#B8860B', fontWeight: '600' },
+  badge: { backgroundColor: '#B8860B', borderRadius: 10, minWidth: 20, height: 20, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center' },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 10, marginBottom: 8, fontSize: 14 },
   row: { flexDirection: 'row', gap: 8 },
   rowInputCity: { flex: 2 },

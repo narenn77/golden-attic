@@ -17,6 +17,7 @@ import MyListingsScreen from '../screens/MyListingsScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import ConversationScreen from '../screens/ConversationScreen';
 import OrdersScreen from '../screens/OrdersScreen';
+import { useNotificationCounts } from '../hooks/useNotificationCounts';
 
 const Stack = createNativeStackNavigator();
 
@@ -28,6 +29,8 @@ const Stack = createNativeStackNavigator();
 // second line of defense.
 export default function RootNavigator() {
   const { user, loading, logout } = useAuth();
+  const { unreadMessages, bidActivity } = useNotificationCounts();
+  const hasAnyNotification = unreadMessages > 0 || bidActivity > 0;
 
   if (loading) {
     return (
@@ -46,8 +49,12 @@ export default function RootNavigator() {
           options={({ navigation }) => ({
             title: 'Golden Attic',
             headerRight: () => (
-              <TouchableOpacity onPress={() => navigation.navigate(user ? 'Profile' : 'Login')}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate(user ? 'Profile' : 'Login')}
+                style={styles.headerRightRow}
+              >
                 <Text style={styles.headerLink}>{user ? 'Profile' : 'Log in'}</Text>
+                {user && hasAnyNotification && <View style={styles.notificationDot} />}
               </TouchableOpacity>
             ),
             headerLeft: user
@@ -90,5 +97,7 @@ export default function RootNavigator() {
 const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
   headerLink: { color: '#B8860B', fontSize: 15, fontWeight: '600', paddingHorizontal: 8 },
+  headerRightRow: { flexDirection: 'row', alignItems: 'center' },
+  notificationDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#D32F2F', marginLeft: -4, marginRight: 4 },
   logoutHeaderLink: { color: '#D32F2F', fontSize: 15, fontWeight: '600', paddingHorizontal: 8 },
 });

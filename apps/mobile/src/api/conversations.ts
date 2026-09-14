@@ -38,3 +38,7 @@ export function fetchMessages(conversationId: string) {
 export function sendMessage(conversationId: string, body: string) {
   return apiRequest<Message>(`/conversations/${conversationId}/messages`, { method: 'POST', body: { body } });
 }
+
+export function fetchUnreadMessageCount() {
+  return apiRequest<{ count: number }>('/conversations/unread-count');
+}
